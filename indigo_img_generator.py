@@ -49,15 +49,28 @@ indigo.setOption("render-highlight-thickness-enabled",True)
 bond_stereo_dict = {}
 # mol = Chem.MolFromSmiles("CCCCc1ccc(CCCC)cc1")
 def smiles2img(smiles,path='temp.png',serial=0):
+    print(f"\n=== Processing molecule {serial}: {smiles[:50]}... ===")
+    
     size = np.random.randint(320,512)
+    print(f"  size = {size} (type: {type(size).__name__})")
+    
     indigo.setOption('render-image-width', size)
     indigo.setOption('render-image-height', size)
-    indigo.setOption('render-stereo-style', ['none','old'][np.random.randint(0,2)])
+    
+    stereo_style = ['none','old'][np.random.randint(0,2)]
+    print(f"  render-stereo-style = '{stereo_style}' (type: {type(stereo_style).__name__})")
+    indigo.setOption('render-stereo-style', stereo_style)
 
-    indigo.setOption("render-label-mode", ['all','terminal-hetero','hetero'][np.random.randint(0,3)])
+    label_mode = ['all','terminal-hetero','hetero'][np.random.randint(0,3)]
+    print(f"  render-label-mode = '{label_mode}' (type: {type(label_mode).__name__})")
+    indigo.setOption("render-label-mode", label_mode)
 
-    indigo.setOption("render-bond-line-width", np.random.randint(1,5))
-
+    bond_line_width = np.random.randint(1,5)
+    print(f"  render-bond-line-width = {bond_line_width} (type: {type(bond_line_width).__name__})")
+    indigo.setOption("render-bond-line-width", float(bond_line_width))
+    
+    print("  Loading molecule with Indigo...")
+    
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         mol = Chem.MolFromInchi(smiles)
@@ -97,7 +110,7 @@ def smiles2img(smiles,path='temp.png',serial=0):
     bond_length = int(delta * (size-bond_length) / max(x.max() - x.min(), y.max() - y.min()))
     scale = bond_length / delta
 
-    indigo.setOption("render-bond-length", bond_length)
+    indigo.setOption("render-bond-length", float(bond_length))
     indigo_render.renderToFile(mol, path)
 
     x = x - (x.max() + x.min()) / 2
@@ -327,5 +340,4 @@ if __name__ == '__main__':
     df.to_csv('indigo_train_data/processed_chembl2.csv',index=False)
     print(len(df))
     print(bond_stereo_dict)
-
 

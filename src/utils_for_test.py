@@ -15,10 +15,11 @@ class MolecularImageDataset(Dataset):
         return len(self.df)
 
     def __getitem__(self, idx):
-        path = self.df.loc[idx,'name']
-        path = '../data/UOB/processed_images/'+ path + '.png'
+        path = self.df.loc[idx,'path']
+        # path = '../data/UOB/processed_images/'+ path + '.png'
 
         temp_img = cv2.imread(path,flags=0)
+        temp_img = cv2.resize(temp_img, (512, 512))
         temp_img = (temp_img/255).astype('float32')
         temp_img = (temp_img>0.2)
         temp_img = 1-temp_img
@@ -37,7 +38,6 @@ def collate_fn(batch):
     imgs = torch.from_numpy(imgs)
 
     return imgs
-
 
 
 

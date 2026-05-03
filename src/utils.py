@@ -23,6 +23,8 @@ stereo_vocab = {0 : 0, 1 : 1, 6 : 2}
 #     h[h < np.finfo(h.dtype).eps * h.max()] = 0
 #     return h
 
+
+
 class MolecularImageDataset(Dataset):
     def __init__(self, df, transform=None, amount=0.1):
         super(MolecularImageDataset, self).__init__()
@@ -35,7 +37,9 @@ class MolecularImageDataset(Dataset):
 
     def __getitem__(self, idx):
         path = self.df.loc[idx,'path']
-        path = '../data/'+ path
+        # path = '../data/'+ path
+        if not path.startswith('/beegfs'):
+            path = '../'+ path
         atoms_string = self.df.loc[idx,'atoms_string']
         bonds_string = self.df.loc[idx,'bonds_string']
 

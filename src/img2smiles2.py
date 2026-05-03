@@ -35,13 +35,18 @@ atom_max_valence = {'<unkonw>': 4, 'O': 2, 'C': 4, 'N': 3, 'F': 1, 'H': 1, 'S': 
 
 df = pd.read_csv('../data2/UOB/uob.csv')
 
+if 'Smiles' in df.columns:
+    df.rename(columns={'Smiles': 'smiles'}, inplace=True)
+elif 'SMILES' in df.columns:
+    df.rename(columns={'SMILES': 'smiles'}, inplace=True)
+
 dataset = MolecularImageDataset(df)
 
 dataloader = DataLoader(dataset, 64, collate_fn=collate_fn)
 
 model = UNet(in_channels=1, heads=[1,14,3,2,1,360,60,60])
 model = nn.DataParallel(model)
-model.load_state_dict(torch.load('weights0.2/unet_model_weights29.pkl'))
+model.load_state_dict(torch.load('weights/unet_model_weights29.pkl'))
 
 model = model.to(device)
 
@@ -57,7 +62,7 @@ with torch.no_grad():
         atom_targets_pred, atom_types_pred, atom_charges_pred, atom_hs_pred, bond_targets_pred, \
         bond_types_pred, bond_rhos_pred, bond_omega_types_pred = model(
             imgs)
-
+        
         temp = torch.nn.functional.max_pool2d(atom_targets_pred, kernel_size=3,
                                               stride=1, padding=1)
         atom_targets_pred = (temp == atom_targets_pred) * (atom_targets_pred > -1).float()
@@ -102,6 +107,7 @@ with torch.no_grad():
         #     plt.plot([y - rho* np.sin(omega), y +  rho*np.sin(omega)], [x -  rho*np.cos(omega), x +  rho*np.cos(omega)])
 
         for j in range(atom_targets_pred.shape[0]):
+            
             smiles = df.loc[total_nums, 'smiles']
             mol = Chem.MolFromSmiles(smiles)
             smiles = Chem.MolToSmiles(mol, canonical=True)
