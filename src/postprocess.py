@@ -17,8 +17,9 @@ bond_type_devocab = {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6}
 # VALENCE TABLE
 # =======================
 atom_max_valence = {
-    'C': 4, 'O': 2, 'N': 3, 'F': 1, 'H': 1,
-    'S': 6, 'Cl': 1, 'P': 5, 'Br': 1, 'I': 1
+    '<unkonw>': 4, 'O': 2, 'C': 4, 'N': 3, 'F': 1, 'H': 1, 'S': 6, 'Cl': 1, 'P': 5, 'Br': 1,
+    'B': 3, 'I': 1, 'Si': 4, 'Se': 6, 'Te': 6, 'As': 3, 'Al': 3, 'Zn': 2,
+    'Ca': 2, 'Ag': 1
 }
 
 # =======================
@@ -78,16 +79,23 @@ def extract_bonds(bond_peaks, bond_types, bond_rhos, bond_omega):
 
             omega_idx = omega_idx.item()
 
-            # cyclic NMS
-            prev = (omega_idx - 1) % 60
-            next_ = (omega_idx + 1) % 60
+            # Complex NMS logic from img2smiles2.py
+            if omega_idx <= 28:
+                if bond_omega[omega_idx, x, y] < bond_omega[(omega_idx+29):(omega_idx+31), x, y].max():
+                    continue
+            elif omega_idx == 29:
+                if bond_omega[omega_idx, x, y] < bond_omega[(omega_idx+29):(omega_idx+30), x, y].max() or \
+                        bond_omega[omega_idx, x, y] < bond_omega[0, x, y]:
+                    continue
+            elif omega_idx == 30:
+                if bond_omega[omega_idx, x, y] <= bond_omega[(omega_idx-30):(omega_idx-29), x, y].max() or \
+                    bond_omega[omega_idx, x, y] <= bond_omega[59, x, y]:
+                    continue
+            elif omega_idx >= 31:
+                if bond_omega[omega_idx, x, y] <= bond_omega[(omega_idx-31):(omega_idx-29), x, y].max():
+                    continue
 
-            val = bond_omega[omega_idx, x, y]
-
-            if val < bond_omega[prev, x, y] or val < bond_omega[next_, x, y]:
-                continue
-
-            omega = omega_idx * (np.pi / 30) - np.pi / 2
+            omega = omega_idx * (np.pi / 30) + np.pi / 60 - np.pi / 2
             rho = bond_rhos[omega_idx, x, y].item()
 
             dx = rho * np.cos(omega)
@@ -111,6 +119,13 @@ def match_bonds_to_atoms(atoms_pos, bonds_pos, bonds_delta, bonds_type):
     edges = []
     edge_types = []
 
+    # Calculate unit vectors for bond direction
+    bonds_delta_arr = np.array(bonds_delta)
+    bond_lengths = np.sqrt((bonds_delta_arr ** 2).sum(-1, keepdims=True))
+    e1 = bonds_delta_arr / bond_lengths
+    e2 = np.flip(e1.copy(), 1)
+    e2[:, 0] = -e2[:, 0]
+
     for i in range(len(bonds_pos)):
         x, y = bonds_pos[i]
         dx, dy = bonds_delta[i]
@@ -118,11 +133,14 @@ def match_bonds_to_atoms(atoms_pos, bonds_pos, bonds_delta, bonds_type):
         p1 = np.array([x + dx, y + dy])
         p2 = np.array([x - dx, y - dy])
 
-        d1 = ((atoms - p1) ** 2).sum(axis=1)
-        d2 = ((atoms - p2) ** 2).sum(axis=1)
+        # Sophisticated distance calculation with leaky_relu from img2smiles2.py
+        distance1 = np.abs(leaky_relu(((p1 - atoms) * e1[i]).sum(-1))) + \
+                    np.abs((2 * (p1 - atoms) * e2[i]).sum(-1))
+        distance2 = np.abs(leaky_relu(-((p2 - atoms) * e1[i]).sum(-1))) + \
+                    np.abs((2 * (p2 - atoms) * e2[i]).sum(-1))
 
-        i1 = d1.argmin()
-        i2 = d2.argmin()
+        i1 = distance2.argmin()
+        i2 = distance1.argmin()
 
         if i1 == i2:
             continue
@@ -141,9 +159,9 @@ def match_bonds_to_atoms(atoms_pos, bonds_pos, bonds_delta, bonds_type):
 # =======================
 # 4. VALENCE CORRECTION
 # =======================
-def fix_valence(atoms_type, edges, edge_types):
+def fix_valence(atoms_type, edges, edge_types, atoms_charge):
 
-    valence = [0] * len(atoms_type)
+    valence = [-c for c in atoms_charge]
 
     for (i, j), t in zip(edges, edge_types):
         v = t if t < 4 else 1
@@ -156,13 +174,19 @@ def fix_valence(atoms_type, edges, edge_types):
             continue
 
         if valence[i] > atom_max_valence[atom]:
-            # heuristic correction
+            # heuristic correction based on actual valence count
             if valence[i] == 2:
                 atoms_type[i] = 'O'
             elif valence[i] == 3:
                 atoms_type[i] = 'N'
             elif valence[i] == 4:
                 atoms_type[i] = 'C'
+            elif valence[i] == 5:
+                atoms_type[i] = 'P'
+            elif valence[i] == 6:
+                atoms_type[i] = 'S'
+            elif valence[i] == 7:
+                atoms_type[i] = 'Cl'
 
     return atoms_type
 
@@ -233,7 +257,7 @@ def predict_smiles_full(
     if len(edges) == 0:
         return None
 
-    atoms_type = fix_valence(atoms_type, edges, edge_types)
+    atoms_type = fix_valence(atoms_type, edges, edge_types, atoms_charge)
 
     atoms_pos, atoms_type, atoms_charge, atoms_h, edges = filter_atoms(
         atoms_pos, atoms_type, atoms_charge, atoms_h, edges

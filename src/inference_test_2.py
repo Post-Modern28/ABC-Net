@@ -128,6 +128,9 @@ with torch.no_grad():
 
         bond_rhos_pred = torch.abs(bond_rhos_pred)
 
+        # Normalize bond_omega with sigmoid
+        bond_omega_types_pred = torch.sigmoid(bond_omega_types_pred)
+
         # ===== peaks =====
         temp = torch.nn.functional.max_pool2d(atom_targets_pred, 3, 1, 1)
         atom_peaks_pred = ((temp == atom_targets_pred) & (atom_targets_pred > 0.25)).float()
@@ -160,23 +163,27 @@ with torch.no_grad():
             atom_recall3.update(rec3 / gt_sum, gt_sum)
 
         # ===== типы / заряды / H =====
-        total_atoms = atom_peaks_gt.sum().item()
+        total_atom_types = atom_types.sum().item()
+        total_atom_charges = atom_charges.sum().item()
+        total_atom_hs = atom_hs.sum().item()
 
-        if total_atoms > 0:
+        if total_atom_types > 0:
             atom_type_gt = atom_types.argmax(1)
             atom_type_pred = atom_types_pred.argmax(1)
-            correct = ((atom_type_gt == atom_type_pred).float() * atom_peaks_gt).sum().item()
-            atom_types_acc.update(correct / total_atoms, total_atoms)
+            correct = ((atom_type_gt == atom_type_pred).float() * atom_types.sum(1)).sum().item()
+            atom_types_acc.update(correct / total_atom_types, total_atom_types)
 
+        if total_atom_charges > 0:
             atom_charge_gt = atom_charges.argmax(1)
             atom_charge_pred = atom_charges_pred.argmax(1)
-            correct = ((atom_charge_gt == atom_charge_pred).float() * atom_peaks_gt).sum().item()
-            atom_charges_acc.update(correct / total_atoms, total_atoms)
+            correct = ((atom_charge_gt == atom_charge_pred).float() * atom_charges.sum(1)).sum().item()
+            atom_charges_acc.update(correct / total_atom_charges, total_atom_charges)
 
+        if total_atom_hs > 0:
             atom_hs_gt = atom_hs.argmax(1)
             atom_hs_pred_cls = atom_hs_pred.argmax(1)
-            correct = ((atom_hs_gt == atom_hs_pred_cls).float() * atom_peaks_gt).sum().item()
-            atom_hs_acc.update(correct / total_atoms, total_atoms)
+            correct = ((atom_hs_gt == atom_hs_pred_cls).float() * atom_hs.sum(1)).sum().item()
+            atom_hs_acc.update(correct / total_atom_hs, total_atom_hs)
 
         # ===================== СВЯЗИ =====================
         tp = (bond_peaks_pred * bond_peaks_gt).sum().item()
@@ -200,14 +207,17 @@ with torch.no_grad():
             bond_recall3.update(rec3 / gt_sum, gt_sum)
 
         # ===== bond types =====
-        total_bonds = bond_peaks_gt.sum().item()
+        total_bond_types = bond_types.sum().item()
 
-        if total_bonds > 0:
+        if total_bond_types > 0:
             bond_type_gt = bond_types.argmax(1)
             bond_type_pred = bond_types_pred.argmax(1)
-            correct = ((bond_type_gt == bond_type_pred).float() * bond_peaks_gt).sum().item()
-            bond_types_acc.update(correct / total_bonds, total_bonds)
+            correct = ((bond_type_gt == bond_type_pred).float() * bond_types.sum(1)).sum().item()
+            bond_types_acc.update(correct / total_bond_types, total_bond_types)
 
+        # For bond rhos MAE, we still use bond_peaks_gt as the mask
+        total_bonds = bond_peaks_gt.sum().item()
+        if total_bonds > 0:
             mae = (torch.abs(bond_rhos_pred - bond_rhos) * bond_peaks_gt).sum().item() / total_bonds
             bond_rhos_mae.update(mae, total_bonds)
 
