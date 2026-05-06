@@ -14,6 +14,7 @@ from unet import UNet
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d
+import os
 
 plt.switch_backend('agg')
 from generate_smiles import sdf2smiles
@@ -32,28 +33,41 @@ from postprocessing2 import (
     find_implicit_hydrogens,
     predict_smiles_full
 )
+from plotting_utils import plot_inference_results
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # =======================
 # CONFIG
 # =======================
-CSV_PATH = '../train_data/test_chembl.csv'
+
+names = ['test_chembl', 'uob', 'uspto']
+
+DATASET_NAME = names[2]
+
+
+
+CSV_PATH = '../csv_with_path/' + DATASET_NAME + '.csv'
 WEIGHTS_PATH = 'weights/unet_model_weights29.pkl'
 BATCH_SIZE = 32
+PLOT_IMAGES = True  # Set to True to save visualization images
+PLOT_DPI = 1000
+PLOT_DIR = f'results/{DATASET_NAME}/imgs'
+RESULTS_DIR = f'results/{DATASET_NAME}'
 
 # =======================
 # DATA
 # =======================
-df = pd.read_csv(CSV_PATH).copy().reset_index(drop=True)
+# df = pd.read_csv(CSV_PATH).copy().reset_index(drop=True)
+
+df = pd.read_csv(CSV_PATH).copy().reset_index(drop=True)[:30]
 
 # df = pd.read_csv('../data2/UOB/uob.csv')
-df = pd.read_csv('../data2/USPTO/uspto.csv')
+# df = pd.read_csv('../data2/USPTO/uspto.csv')[:100]
 df['atoms_string'] = ''
 df['bonds_string'] = ''
 
-
-dataset = MolecularImageDataset(df, amount=0.0)
+dataset = MolecularImageDataset(df, amount=0.1)
 
 dataloader = DataLoader(dataset, BATCH_SIZE, collate_fn=collate_fn)
 
@@ -117,6 +131,7 @@ with torch.no_grad():
                 print(f"Processed: {total_nums}")
             
             # ===== EXTRACT PREDICTIONS =====
+            img = imgs[j].detach().cpu().numpy()
             atom_target_img = atom_targets_pred[j, 0]
             atom_type_img = atom_types_pred[j].argmax(0)
             atom_charge_img = atom_charges_pred[j].argmax(0)
@@ -135,16 +150,44 @@ with torch.no_grad():
                 continue
             
             # ===== FULL POSTPROCESSING PIPELINE =====
-            pred_smiles = predict_smiles_full(
-                atom_target_img,
-                atom_type_img,
-                atom_charge_img,
-                atom_hs_img,
-                bond_target_img,
-                bond_type_img,
-                bond_rhos_img,
-                bond_omega_img2
-            )
+            if PLOT_IMAGES:
+                pred_smiles, intermediates = predict_smiles_full(
+                    atom_target_img,
+                    atom_type_img,
+                    atom_charge_img,
+                    atom_hs_img,
+                    bond_target_img,
+                    bond_type_img,
+                    bond_rhos_img,
+                    bond_omega_img2,
+                    return_intermediates=True
+                )
+                
+                # Plot results if intermediates are available
+                if intermediates is not None:
+                    plot_inference_results(
+                        img=img[0],
+                        atom_target_img=atom_target_img,
+                        atoms_position_list_final=intermediates['atoms_position_list_final'],
+                        atoms_type_list_final=intermediates['atoms_type_list_final'],
+                        bond_target_img=bond_target_img,
+                        bonds_position_list_final=intermediates['bonds_position_list_final'],
+                        bonds_property_list_final=intermediates['bonds_property_list_final'],
+                        bonds_delta_list_final=intermediates['bonds_delta_list_final'],
+                        save_path=f'{PLOT_DIR}/{total_nums}.png',
+                        dpi=PLOT_DPI
+                    )
+            else:
+                pred_smiles = predict_smiles_full(
+                    atom_target_img,
+                    atom_type_img,
+                    atom_charge_img,
+                    atom_hs_img,
+                    bond_target_img,
+                    bond_type_img,
+                    bond_rhos_img,
+                    bond_omega_img2
+                )
             
             results.append(pred_smiles)
 
@@ -169,7 +212,8 @@ print(f"Accuracy: {100 * exact_matches / total_valid:.2f}%")
 print("="*60 + "\n")
 
 # Save results
+os.makedirs(RESULTS_DIR, exist_ok=True)
 dff = df[['Smiles', 'smiles_pred']].reset_index(drop=True)
 dff['path'] = df['path'].values
 dff['match'] = dff['Smiles'] == dff['smiles_pred']
-dff.to_csv('results/results_uspto.csv', index=False)
+dff.to_csv(f'{RESULTS_DIR}/results_refactored.csv', index=False)

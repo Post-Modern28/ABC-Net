@@ -187,10 +187,14 @@ def match_bonds_to_atoms(atoms_pos, bonds_pos, bonds_delta, bonds_type):
     Returns:
         edges: List of [atom_idx1, atom_idx2]
         edge_types: List of bond types
+        bonds_pos_filtered: Filtered bond positions (matching edges)
+        bonds_delta_filtered: Filtered bond direction vectors (matching edges)
     """
     atoms = np.array(atoms_pos)
     edges = []
     edge_types = []
+    bonds_pos_filtered = []
+    bonds_delta_filtered = []
     
     # Calculate unit vectors for bond direction
     bonds_delta_arr = np.array(bonds_delta)
@@ -229,8 +233,10 @@ def match_bonds_to_atoms(atoms_pos, bonds_pos, bonds_delta, bonds_type):
         
         edges.append([index1, index2])
         edge_types.append(bond_type_devocab[bonds_type[i]])
+        bonds_pos_filtered.append(bonds_pos[i])
+        bonds_delta_filtered.append(bonds_delta[i])
     
-    return edges, edge_types
+    return edges, edge_types, bonds_pos_filtered, bonds_delta_filtered
 
 
 # =======================
@@ -399,7 +405,8 @@ def predict_smiles_full(
     bond_peaks,
     bond_types,
     bond_rhos,
-    bond_omega
+    bond_omega,
+    return_intermediates=False
 ):
     """
     Full SMILES prediction pipeline.
@@ -413,9 +420,11 @@ def predict_smiles_full(
         bond_types: Bond type predictions [6, 60, H, W]
         bond_rhos: Bond length predictions [60, H, W]
         bond_omega: Bond omega predictions [60, H, W]
+        return_intermediates: If True, return intermediate results for plotting
     
     Returns:
         smiles: Predicted SMILES string or None
+        intermediates: Dictionary containing intermediate results (only if return_intermediates=True)
     """
     # Extract atoms
     atoms_pos, atoms_type, atoms_charge, atoms_h = extract_atoms(
@@ -423,6 +432,8 @@ def predict_smiles_full(
     )
     
     if len(atoms_pos) == 0:
+        if return_intermediates:
+            return None, None
         return None
     
     # Extract bonds
@@ -431,14 +442,18 @@ def predict_smiles_full(
     )
     
     if len(bonds_pos) == 0:
+        if return_intermediates:
+            return None, None
         return None
     
     # Match bonds to atoms
-    edges, edge_types = match_bonds_to_atoms(
+    edges, edge_types, bonds_pos_filtered, bonds_delta_filtered = match_bonds_to_atoms(
         atoms_pos, bonds_pos, bonds_delta, bonds_type
     )
     
     if len(edges) == 0:
+        if return_intermediates:
+            return None, None
         return None
     
     # Apply valence correction (pass atoms_charge)
@@ -466,6 +481,19 @@ def predict_smiles_full(
             implicit_h_list
         )
     except:
+        if return_intermediates:
+            return None, None
         return None
+    
+    # Return intermediate results if requested
+    if return_intermediates:
+        intermediates = {
+            'atoms_position_list_final': atoms_pos,
+            'atoms_type_list_final': atoms_type,
+            'bonds_position_list_final': bonds_pos_filtered,
+            'bonds_property_list_final': edge_types,
+            'bonds_delta_list_final': bonds_delta_filtered
+        }
+        return smiles, intermediates
     
     return smiles
