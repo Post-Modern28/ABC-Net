@@ -44,6 +44,7 @@ class MolecularImageDataset(Dataset):
         bonds_string = self.df.loc[idx,'bonds_string']
 
         temp_img = cv2.imread(path,flags=0).astype('float32')
+        temp_img = cv2.resize(temp_img, (512, 512))
 
         scale_x = 1
         scale_y = 1
