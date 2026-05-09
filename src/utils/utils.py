@@ -35,9 +35,6 @@ class MolecularImageDataset(Dataset):
 
     def __getitem__(self, idx):
         path = self.df.loc[idx,'path']
-        # path = '../data/'+ path
-        if not path.startswith('/beegfs'):
-            path = '../'+ path
         atoms_string = self.df.loc[idx,'atoms_string']
         bonds_string = self.df.loc[idx,'bonds_string']
 

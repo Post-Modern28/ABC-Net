@@ -44,7 +44,7 @@ def inference_collate_fn(batch):
 
 # --------------------- Загрузка модели ---------------------
 print("Loading data...")
-df = pd.read_csv('../train_data/processed_chembl.csv')
+df = pd.read_csv('../../train_data/processed_chembl.csv')
 df = df[:500].copy().reset_index(drop=True)
 
 dataset = InferenceDataset(df)

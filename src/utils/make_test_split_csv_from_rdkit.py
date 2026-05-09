@@ -3,9 +3,9 @@ import os
 import pandas as pd
 
 # Путь к исходному файлу
-input_csv = '../train_data/processed_chembl.csv'
+input_csv = 'train_data/processed_chembl.csv'
 # Путь для сохранения нового файла
-output_csv = '../train_data/test_chembl.csv'
+output_csv = 'train_data/test_chembl.csv'
 
 # Проверяем, существует ли входной файл
 if not os.path.exists(input_csv):

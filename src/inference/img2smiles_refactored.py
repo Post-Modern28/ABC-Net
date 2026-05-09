@@ -16,6 +16,7 @@ from ..utils.utils import MolecularImageDataset, collate_fn
 
 plt.switch_backend('agg')
 from rdkit import Chem
+from pathlib import Path
 
 from .plotting_utils import plot_inference_results
 from .postprocessing2 import predict_smiles_full
@@ -26,24 +27,27 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # CONFIG
 # =======================
 
+
 names = ['test_chembl', 'uob', 'uspto']
-
-DATASET_NAME = names[2]
-
+DATASET_NAME = names[0]
 
 
-CSV_PATH = '../csv_with_path/' + DATASET_NAME + '.csv'
-WEIGHTS_PATH = 'weights/unet_model_weights29.pkl'
+current_file = Path(__file__).resolve()
+project_root = current_file.parent.parent.parent  # inference -> src -> ABC-Net
+weights_dir = current_file.parent.parent / 'weights'  # inference -> src -> weights
+results_dir = current_file.parent.parent / 'results'
+
+CSV_PATH = project_root / 'csv_with_path' / f'{DATASET_NAME}.csv'
+WEIGHTS_PATH = weights_dir / 'unet_model_weights29.pkl'
 BATCH_SIZE = 32
 PLOT_IMAGES = True  # Set to True to save visualization images
 PLOT_DPI = 1000
-PLOT_DIR = f'results/{DATASET_NAME}/imgs'
-RESULTS_DIR = f'results/{DATASET_NAME}'
+PLOT_DIR = results_dir / DATASET_NAME / 'imgs'
+RESULTS_DIR = results_dir / DATASET_NAME
 
 # =======================
 # DATA
 # =======================
-
 
 df = pd.read_csv(CSV_PATH).copy().reset_index(drop=True)[:30]
 

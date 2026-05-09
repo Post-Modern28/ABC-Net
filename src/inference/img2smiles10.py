@@ -36,7 +36,7 @@ os.makedirs(SAVE_DIR, exist_ok=True)
 # ---------------------------
 # Загрузка данных
 # ---------------------------
-df = pd.read_csv('../data2/UOB/uob.csv')
+df = pd.read_csv('data2/UOB/uob.csv')
 
 # Приводим колонку со SMILES к единому имени
 if 'Smiles' in df.columns:

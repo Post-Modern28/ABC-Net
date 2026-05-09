@@ -32,7 +32,7 @@ atom_type_weights = torch.tensor([1,0.1,0.1,0.1,1,1,1,1,1,10,10,10,10,10]).resha
 # train_df = df[:900].copy().reset_index(drop=True)
 # test_df = df[900:1000].copy().reset_index(drop=True)
 
-df = pd.read_csv('../train_data/processed_chembl.csv')
+df = pd.read_csv('train_data/processed_chembl.csv')
 # train_df = df[:10000].copy().reset_index(drop=True)      # 10 000 train
 # test_df = df[10000:11000].copy().reset_index(drop=True)  # 1 000 test
 

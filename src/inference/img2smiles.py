@@ -35,7 +35,7 @@ atom_max_valence = {'<unkonw>': 4, 'O': 2, 'C': 4, 'N': 3, 'F': 1, 'H': 1, 'S': 
 
 # df = pd.read_csv('../train_data/processed_chembl.csv')[90000:91000].copy().reset_index(drop=True)
 
-df = pd.read_csv('../train_data/test_chembl.csv').copy().reset_index(drop=True)
+df = pd.read_csv('train_data/test_chembl.csv').copy().reset_index(drop=True)
 
 dataset = MolecularImageDataset(df,amount=0.1)
 

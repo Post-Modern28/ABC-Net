@@ -33,7 +33,7 @@ atom_max_valence = {'<unkonw>': 4, 'O': 2, 'C': 4, 'N': 3, 'F': 1, 'H': 1, 'S': 
                     'B': 3, 'I': 1, 'Si': 4, 'Se': 6, 'Te': 6, 'As': 3, 'Al': 3, 'Zn': 2,
                     'Ca': 2, 'Ag': 1}
 
-df = pd.read_csv('../data2/UOB/uob.csv')
+df = pd.read_csv('data2/UOB/uob.csv')
 
 if 'Smiles' in df.columns:
     df.rename(columns={'Smiles': 'smiles'}, inplace=True)
