@@ -7,11 +7,15 @@ MOL_DIR = '../datasets/UOB_mol_ref'
 IMG_DIR = '../datasets/UOB'
 OUTPUT_CSV = '../data2/UOB/uob.csv'
 
+MOL_DIR = '../datasets/USPTO_mol_ref'
+IMG_DIR = '../datasets/USPTO'
+OUTPUT_CSV = 'data2/USPTO/uspto.csv'
+
 # Создаём папку для вывода
 os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
 
 data = []
-mol_files = sorted([f for f in os.listdir(MOL_DIR) if f.endswith('.mol')])
+mol_files = sorted([f for f in os.listdir(MOL_DIR) if f.lower().endswith('.mol')])
 
 print(f"Найдено {len(mol_files)} .mol файлов")
 

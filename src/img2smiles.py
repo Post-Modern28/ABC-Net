@@ -33,7 +33,9 @@ atom_max_valence = {'<unkonw>': 4, 'O': 2, 'C': 4, 'N': 3, 'F': 1, 'H': 1, 'S': 
                     'B': 3, 'I': 1, 'Si': 4, 'Se': 6, 'Te': 6, 'As': 3, 'Al': 3, 'Zn': 2,
                     'Ca': 2, 'Ag': 1}
 
-df = pd.read_csv('../data/train_data/processed_chembl.csv')[90000:91000].copy().reset_index(drop=True)
+# df = pd.read_csv('../train_data/processed_chembl.csv')[90000:91000].copy().reset_index(drop=True)
+
+df = pd.read_csv('../train_data/test_chembl.csv').copy().reset_index(drop=True)
 
 dataset = MolecularImageDataset(df,amount=0.1)
 
@@ -343,5 +345,24 @@ with torch.no_grad():
 
 
 df['smiles_pred'] = results
-dff = df[['Smiles', 'smiles_pred']]
-dff.to_csv('results/results.csv')
+
+# Calculate exact match accuracy
+valid_results = [r for r in results if r is not None]
+total_valid = len(valid_results)
+exact_matches = sum(1 for gt, pred in zip(df['Smiles'], results)
+                    if gt is not None and pred is not None and gt == pred)
+
+print("\n" + "="*60)
+print("РЕЗУЛЬТАТЫ")
+print("="*60)
+print(f"Total processed: {len(results)}")
+print(f"Valid predictions: {total_valid}")
+print(f"Exact matches: {exact_matches}")
+print(f"Accuracy: {100 * exact_matches / total_valid:.2f}%")
+print("="*60 + "\n")
+
+
+dff = df[['Smiles', 'smiles_pred']].reset_index(drop=True)
+dff['path'] = df['path'].values
+dff['match'] = dff['Smiles'] == dff['smiles_pred']
+dff.to_csv('results/results.csv', index=False)
