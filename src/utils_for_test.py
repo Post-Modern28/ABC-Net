@@ -1,13 +1,12 @@
-import torch
-from torch.utils.data import Dataset
 import cv2
 import numpy as np
-from skimage import morphology
+import torch
+from torch.utils.data import Dataset
 
 
 class MolecularImageDataset(Dataset):
     def __init__(self, df, transform=None):
-        super(MolecularImageDataset, self).__init__()
+        super().__init__()
         self.df = df
         self.transform = transform
 

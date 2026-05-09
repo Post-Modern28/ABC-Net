@@ -1,5 +1,6 @@
-import pandas as pd
 import os
+
+import pandas as pd
 
 # Путь к исходному файлу
 input_csv = '../train_data/processed_chembl.csv'

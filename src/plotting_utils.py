@@ -3,9 +3,10 @@ Plotting utilities for ABC-Net inference visualization.
 Extracted from img2smiles.py for modular use.
 """
 
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
 
 def plot_inference_results(
@@ -37,15 +38,15 @@ def plot_inference_results(
     """
     # Create directory if it doesn't exist
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    
+
     plt.figure(figsize=(15, 5))
-    
+
     # Plot original image
     plt.subplot(131)
     plt.imshow(img, cmap='gray')
     plt.title('Original Image')
     plt.axis('off')
-    
+
     # Plot atoms
     plt.subplot(132)
     plt.imshow(atom_target_img.detach().cpu().numpy(), cmap='hot')
@@ -54,9 +55,9 @@ def plot_inference_results(
     for m, position in enumerate(atoms_position_list_final):
         x, y = position
         position = [y, x]
-        plt.annotate(atoms_type_list_final[m], xy=position, fontsize=6, 
+        plt.annotate(atoms_type_list_final[m], xy=position, fontsize=6,
                     color='white', weight='bold')
-    
+
     # Plot bonds
     ax = plt.subplot(133)
     plt.imshow(bond_target_img.detach().cpu().numpy(), cmap='hot')
@@ -69,9 +70,9 @@ def plot_inference_results(
                    color='white', weight='bold')
         x, y = position
         delta_y, delta_x = bonds_delta_list_final[m]
-        ax.plot([x - delta_x, x + delta_x], [y - delta_y, y + delta_y], 
+        ax.plot([x - delta_x, x + delta_x], [y - delta_y, y + delta_y],
                 color='cyan', linewidth=1)
-    
+
     plt.tight_layout()
     plt.savefig(save_path, dpi=dpi)
     plt.close()
@@ -98,27 +99,27 @@ def plot_debug_info(
     """
     # Create directory if it doesn't exist
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    
+
     plt.figure(figsize=(15, 5))
-    
+
     # Plot original image
     plt.subplot(131)
     plt.imshow(imgs.cpu().numpy()[sample_idx, 0], cmap='gray')
     plt.title('Original Image')
     plt.axis('off')
-    
+
     # Plot atom predictions
     plt.subplot(132)
     plt.imshow(atom_targets_pred.cpu().numpy()[sample_idx, 0], cmap='hot')
     plt.title('Atom Predictions')
     plt.axis('off')
-    
+
     # Plot bond predictions
     plt.subplot(133)
     plt.imshow(bond_targets_pred.cpu().numpy()[sample_idx, 0], cmap='hot')
     plt.title('Bond Predictions')
     plt.axis('off')
-    
+
     plt.tight_layout()
     plt.savefig(save_path, dpi=dpi)
     plt.close()
@@ -135,10 +136,10 @@ def plot_3d_surface(z, save_path, dpi=1000):
     """
     # Create directory if it doesn't exist
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    
+
     h, l = z.shape
     x, y = np.meshgrid(np.arange(0, h), np.arange(0, l))
-    
+
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection='3d')
     ax.plot_surface(x, y, z, cmap='viridis')
@@ -146,6 +147,6 @@ def plot_3d_surface(z, save_path, dpi=1000):
     ax.set_ylabel('y')
     ax.set_zlabel('z')
     plt.title('3D Surface Plot')
-    
+
     plt.savefig(save_path, dpi=dpi)
     plt.close()

@@ -1,22 +1,23 @@
-from utils_for_test import MolecularImageDataset, collate_fn
-from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import pandas as pd
-import numpy as np
+from torch.utils.data import DataLoader
+
 from unet import UNet
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import mpl_toolkits.mplot3d
+from utils_for_test import MolecularImageDataset, collate_fn
 
 plt.switch_backend('agg')
-from generate_smiles import sdf2smiles
 from copy import deepcopy
-from utils import atom_vocab, charge_vocab
+
 import rdkit
-from rdkit import Chem
 import rdkit.Chem.MolStandardize
+from rdkit import Chem
+
+from generate_smiles import sdf2smiles
+from utils import atom_vocab, charge_vocab
+
 
 def leaky_relu(x):
     x = np.maximum(x, 0.5 * x)
@@ -135,7 +136,7 @@ with torch.no_grad():
                 for position in bond_target_img.nonzero(as_tuple=False):
                     x, y = position
                     x, y = x.cpu().item(), y.cpu().item()
-                        
+
 
                     for omega_index in bond_omega_img2[:, x, y].nonzero(as_tuple=False):
 
@@ -307,11 +308,11 @@ with torch.no_grad():
                     if bond_nums == 4:
                         if atoms_type_list_final[x - 1] != 'C':
                             if atoms_hs_list_final[x - 1] != 0:
-                                if not x in atom_implicit_hs_list:
+                                if x not in atom_implicit_hs_list:
                                     atom_implicit_hs_list.append(x)
                         if atoms_type_list_final[y - 1] != 'C':
                             if atoms_hs_list_final[y - 1] != 0:
-                                if not y in atom_implicit_hs_list:
+                                if y not in atom_implicit_hs_list:
                                     atom_implicit_hs_list.append(y)
 
                 smiles_pred = sdf2smiles(atoms_type_list_final, bond2atom_index_final, atoms_charge_list_final,

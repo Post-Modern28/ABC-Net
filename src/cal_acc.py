@@ -1,9 +1,8 @@
-import pandas as pd 
+import pandas as pd
 import rdkit
-from rdkit import Chem
-from rdkit import DataStructs
-from rdkit.Chem import AllChem
 import rdkit.Chem.MolStandardize
+from rdkit import Chem, DataStructs
+from rdkit.Chem import AllChem
 
 df = pd.read_csv('results/results.csv')
 sums = 0
@@ -15,14 +14,14 @@ for i in range(len(df)):
     smiles = df.loc[i,'Smiles']
 
 
-    if (type(smiles)!=type('a')) or (type(smiles_pred)!=type('a')):
+    if (type(smiles)!=str) or (type(smiles_pred)!=str):
         continue
     mol1 = Chem.MolFromSmiles(smiles)
     mol2 = Chem.MolFromSmiles(smiles_pred)
 
     if (mol2 is None) or (mol1 is None):
         continue
-        
+
     smiles = rdkit.Chem.MolStandardize.canonicalize_tautomer_smiles(smiles)
     smiles_pred = rdkit.Chem.MolStandardize.canonicalize_tautomer_smiles(smiles_pred)
 
@@ -31,7 +30,7 @@ for i in range(len(df)):
 
     mol1 = Chem.MolFromSmiles(smiles)
     mol2 = Chem.MolFromSmiles(smiles_pred)
-    
+
     smiles1 = Chem.MolToSmiles(mol1,canonical=True,isomericSmiles=False)
     smiles2 = Chem.MolToSmiles(mol2,canonical=True,isomericSmiles=False)
 

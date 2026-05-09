@@ -1,17 +1,20 @@
 from multiprocessing import Pool
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
+
 from unet import UNet
 from utils import MolecularImageDataset, collate_fn
+
 plt.switch_backend('agg')
+from rdkit import Chem
+
 from generate_smiles import sdf2smiles
 from utils import atom_vocab, charge_vocab
-from rdkit import Chem
 
 
 def leaky_relu(x):

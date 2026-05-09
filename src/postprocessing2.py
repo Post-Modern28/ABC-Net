@@ -3,11 +3,12 @@ Postprocessing functions for ABC-Net inference.
 Refactored from img2smiles_clean.py for better code organization.
 """
 
-import numpy as np
 from copy import deepcopy
+
+import numpy as np
+
 from generate_smiles import sdf2smiles
 from utils import atom_vocab, charge_vocab
-
 
 # =======================
 # DEVOCAB
@@ -86,28 +87,28 @@ def extract_atoms(atom_target_img, atom_type_img, atom_charge_img, atom_hs_img):
     atoms_type = []
     atoms_charge = []
     atoms_h = []
-    
+
     for position in atom_target_img.nonzero(as_tuple=False):
         x, y = position[0].item(), position[1].item()
-        
+
         # Remove duplicates (distance < 2px)
         if len(atoms_pos) > 0:
             temp1 = np.array(atoms_pos)
             temp2 = np.array([[x, y]])
             if np.sum(np.square(temp1 - temp2), axis=-1).min() < 4:
                 continue
-        
+
         atoms_pos.append([x, y])
-        
+
         # Extract properties at position (direct indexing, not argmax)
         t = atom_type_img[x, y].item()
         c = atom_charge_img[x, y].item()
         h = atom_hs_img[x, y].item()
-        
+
         atoms_type.append(atom_type_devocab.get(t, 'C'))
         atoms_charge.append(atom_charge_devocab.get(c, 0))
         atoms_h.append(h)
-    
+
     return atoms_pos, atoms_type, atoms_charge, atoms_h
 
 
@@ -132,14 +133,14 @@ def extract_bonds(bond_target_img, bond_type_img, bond_rhos_img, bond_omega_img)
     bonds_pos = []
     bonds_type = []
     bonds_delta = []
-    
+
     for position in bond_target_img.nonzero(as_tuple=False):
         x, y = position[0].item(), position[1].item()
-        
+
         # --- MULTI-OMEGA PEAKS ---
         for omega_idx in bond_omega_img[:, x, y].nonzero(as_tuple=False):
             omega_idx = omega_idx.item()
-            
+
             # Complex NMS logic
             if omega_idx <= 28:
                 if bond_omega_img[omega_idx, x, y] < bond_omega_img[(omega_idx+29):(omega_idx+31), x, y].max():
@@ -155,19 +156,19 @@ def extract_bonds(bond_target_img, bond_type_img, bond_rhos_img, bond_omega_img)
             elif omega_idx >= 31:
                 if bond_omega_img[omega_idx, x, y] <= bond_omega_img[(omega_idx-31):(omega_idx-29), x, y].max():
                     continue
-            
+
             omega = omega_idx * (np.pi / 30) + np.pi / 60 - np.pi / 2
             rho = bond_rhos_img[omega_idx, x, y].item()
-            
+
             dx = rho * np.cos(omega)
             dy = rho * np.sin(omega)
-            
+
             btype = bond_type_img[omega_idx, x, y].item()
-            
+
             bonds_pos.append([x, y])
             bonds_type.append(btype)
             bonds_delta.append([dx, dy])
-    
+
     return bonds_pos, bonds_type, bonds_delta
 
 
@@ -195,47 +196,47 @@ def match_bonds_to_atoms(atoms_pos, bonds_pos, bonds_delta, bonds_type):
     edge_types = []
     bonds_pos_filtered = []
     bonds_delta_filtered = []
-    
+
     # Calculate unit vectors for bond direction
     bonds_delta_arr = np.array(bonds_delta)
     bond_lengths = np.sqrt((bonds_delta_arr ** 2).sum(-1, keepdims=True))
     e1 = bonds_delta_arr / bond_lengths
     e2 = np.flip(e1.copy(), 1)
     e2[:, 0] = -e2[:, 0]
-    
+
     e1 = np.expand_dims(e1, 1)
     e2 = np.expand_dims(e2, 1)
-    
+
     # Predicted atom positions from bonds
     atom_pred_position1 = np.expand_dims(np.array(bonds_pos) + np.array(bonds_delta), 1)
     atom_pred_position2 = np.expand_dims(np.array(bonds_pos) - np.array(bonds_delta), 1)
     atoms_position = np.expand_dims(np.array(atoms_pos), 0)
-    
+
     # Sophisticated distance calculation with leaky_relu (broadcasted)
     distance1 = np.abs(leaky_relu(((atom_pred_position1 - atoms_position) * e1).sum(-1))) + \
                 np.abs((2 * (atom_pred_position1 - atoms_position) * e2).sum(-1))
     distance2 = np.abs(leaky_relu(-((atom_pred_position2 - atoms_position) * e1).sum(-1))) + \
                 np.abs((2 * (atom_pred_position2 - atoms_position) * e2).sum(-1))
-    
+
     atom_index1 = distance2.argmin(-1)
     atom_index2 = distance1.argmin(-1)
-    
+
     for i in range(len(bonds_pos)):
         index1 = atom_index1[i]
         index2 = atom_index2[i]
-        
+
         if index1 == index2:
             continue
-        
+
         # Check for duplicate bonds
         if [index1, index2] in edges or [index2, index1] in edges:
             continue
-        
+
         edges.append([index1, index2])
         edge_types.append(bond_type_devocab[bonds_type[i]])
         bonds_pos_filtered.append(bonds_pos[i])
         bonds_delta_filtered.append(bonds_delta[i])
-    
+
     return edges, edge_types, bonds_pos_filtered, bonds_delta_filtered
 
 
@@ -257,24 +258,24 @@ def apply_valence_correction(atoms_type, atoms_charge, edges, edge_types):
     """
     # Calculate valence for each atom (starting from negative charge)
     atom_counts = [-c for c in atoms_charge]
-    
+
     for temp, atom_index in enumerate(edges):
         x, y = atom_index
         bond_nums = edge_types[temp]
-        
+
         # Aromatic bonds (4, 5, 6) count as single bonds
         if bond_nums == 4 or bond_nums == 5 or bond_nums == 6:
             bond_nums = 1
-        
+
         atom_counts[x] += bond_nums
         atom_counts[y] += bond_nums
-    
+
     # Apply correction
     for serial, atom_count in enumerate(atom_counts):
         atom_type = atoms_type[serial]
         if atom_type in atom_max_valence and atom_max_valence[atom_type] < atom_count:
             atoms_type[serial] = correct_atom_valence(atom_type, atom_count)
-    
+
     return atoms_type
 
 
@@ -303,7 +304,7 @@ def filter_atoms(atoms_pos, atoms_type, atoms_charge, atoms_h, edges):
     atom_showed_list = []
     for atom_index in edges:
         atom_showed_list += atom_index
-    
+
     # Create mask for atoms that are connected
     atom_mask = []
     for i in range(len(atoms_pos)):
@@ -311,14 +312,14 @@ def filter_atoms(atoms_pos, atoms_type, atoms_charge, atoms_h, edges):
             atom_mask.append(True)
         else:
             atom_mask.append(False)
-    
+
     # Create mapping (1-based indexing for sdf2smiles)
     corresponding_index = []
     new_pos = []
     new_type = []
     new_charge = []
     new_h = []
-    
+
     k = 1
     for i in range(len(atoms_pos)):
         if atom_mask[i]:
@@ -330,7 +331,7 @@ def filter_atoms(atoms_pos, atoms_type, atoms_charge, atoms_h, edges):
             k += 1
         else:
             corresponding_index.append(k)
-    
+
     return new_pos, new_type, new_charge, new_h, corresponding_index
 
 
@@ -354,7 +355,7 @@ def remap_bonds(edges, atom_mapping):
         x = atom_mapping[x]
         y = atom_mapping[y]
         edges_final.append([x, y])
-    
+
     return edges_final
 
 
@@ -375,11 +376,11 @@ def find_implicit_hydrogens(atoms_type, edges, edge_types, atoms_h):
         implicit_h_list: List of atom indices (1-based) needing implicit H
     """
     implicit_h_list = []
-    
+
     for temp, atom_index in enumerate(edges):
         x, y = atom_index
         bond_nums = edge_types[temp]
-        
+
         # Aromatic bonds (type 4) don't count for valence
         if bond_nums == 4:
             if atoms_type[x - 1] != 'C':
@@ -390,7 +391,7 @@ def find_implicit_hydrogens(atoms_type, edges, edge_types, atoms_h):
                 if atoms_h[y - 1] != 0:
                     if y not in implicit_h_list:
                         implicit_h_list.append(y)
-    
+
     return implicit_h_list
 
 
@@ -430,46 +431,46 @@ def predict_smiles_full(
     atoms_pos, atoms_type, atoms_charge, atoms_h = extract_atoms(
         atom_peaks, atom_types, atom_charges, atom_hs
     )
-    
+
     if len(atoms_pos) == 0:
         if return_intermediates:
             return None, None
         return None
-    
+
     # Extract bonds
     bonds_pos, bonds_type, bonds_delta = extract_bonds(
         bond_peaks, bond_types, bond_rhos, bond_omega
     )
-    
+
     if len(bonds_pos) == 0:
         if return_intermediates:
             return None, None
         return None
-    
+
     # Match bonds to atoms
     edges, edge_types, bonds_pos_filtered, bonds_delta_filtered = match_bonds_to_atoms(
         atoms_pos, bonds_pos, bonds_delta, bonds_type
     )
-    
+
     if len(edges) == 0:
         if return_intermediates:
             return None, None
         return None
-    
+
     # Apply valence correction (pass atoms_charge)
     atoms_type = apply_valence_correction(atoms_type, atoms_charge, edges, edge_types)
-    
+
     # Filter atoms (keep only those connected by bonds)
     atoms_pos, atoms_type, atoms_charge, atoms_h, atom_mapping = filter_atoms(
         atoms_pos, atoms_type, atoms_charge, atoms_h, edges
     )
-    
+
     # Remap bonds
     edges = remap_bonds(edges, atom_mapping)
-    
+
     # Find implicit hydrogens
     implicit_h_list = find_implicit_hydrogens(atoms_type, edges, edge_types, atoms_h)
-    
+
     # Generate SMILES
     try:
         smiles = sdf2smiles(
@@ -484,7 +485,7 @@ def predict_smiles_full(
         if return_intermediates:
             return None, None
         return None
-    
+
     # Return intermediate results if requested
     if return_intermediates:
         intermediates = {
@@ -495,5 +496,5 @@ def predict_smiles_full(
             'bonds_delta_list_final': bonds_delta_filtered
         }
         return smiles, intermediates
-    
+
     return smiles

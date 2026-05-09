@@ -1,15 +1,10 @@
-from utils import MolecularImageDataset,collate_fn
-from torch.utils.data import  DataLoader
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import pandas as pd
-import numpy as np
-from unet import UNet
-from segnet import SegNet
-import matplotlib.pyplot as plt
+import torch
+from torch.utils.data import DataLoader
+
 from test_accuracy import compute_accuracy
+from unet import UNet
+from utils import MolecularImageDataset, collate_fn
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

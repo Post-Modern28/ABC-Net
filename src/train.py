@@ -1,15 +1,15 @@
-from utils import MolecularImageDataset,collate_fn
-from torch.utils.data import  DataLoader
+import time
+
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import pandas as pd
-import numpy as np
-from unet import UNet
-import matplotlib.pyplot as plt
-import os
+from torch.utils.data import DataLoader
+
 from meter import AverageMeter
-import time
+from unet import UNet
+from utils import MolecularImageDataset, collate_fn
+
 
 def print_metrics_table(metrics_dict, title):
     """Выводит метрики в виде таблицы"""
@@ -101,7 +101,7 @@ train_bond_omega_recall3 = AverageMeter()
 
 
 for epoch in range(epoch_nums):
-    epoch_start = time.time() 
+    epoch_start = time.time()
     if epoch==int(epoch_nums/3):
         optimizer = optim.Adam(model.parameters(),lr=2.5e-5,weight_decay=1e-8)
     for i,(imgs, atom_targets,atom_types,atom_charges,atom_hs,
@@ -204,7 +204,7 @@ for epoch in range(epoch_nums):
         train_bond_types_acc.update((torch.sum(torch.sum(bond_types, dim=1) * ((bond_types.argmax(1) ==bond_types_pred.argmax(1)).float())) / torch.sum(
             bond_types)).cpu().detach().numpy(), torch.sum(bond_types).cpu().detach().numpy())
 
-    
+
         train_bond_rhos_mae.update((torch.sum(torch.abs(bond_rhos_pred - bond_rhos) * torch.sum(bond_types, dim=1)) / \
                          torch.sum(bond_types)).cpu().detach().numpy(),torch.sum(bond_types).cpu().detach().numpy())
 
@@ -239,18 +239,7 @@ for epoch in range(epoch_nums):
             model.eval()
             print(f"\n[Эпоха {epoch}, Батч {i}] Loss: {loss.cpu().detach().numpy():.4f}")
             with torch.no_grad():
-                
-#                 print('loss_________________')
-#                 print('atom_targets_loss:',atom_targets_loss.cpu().detach().numpy())
-#                 print('atom_types_loss:',atom_types_loss.cpu().detach().numpy())
-#                 print('atom_charges_loss:',atom_charges_loss.cpu().detach().numpy())
-#                 print('atom_hs_loss:', atom_hs_loss.cpu().detach().numpy())
-#                 print('bond_targets_loss:',bond_targets_loss.cpu().detach().numpy())
-#                 print('bond_types_loss:',bond_types_loss.cpu().detach().numpy())
-                
-#                 print('bond_rho_loss:',bond_rhos_loss.cpu().detach().numpy())
-#                 print('bond_omega_types:',bond_omega_types_loss.cpu().detach().numpy())
-                
+
                 loss_metrics = {
                     "atom_targets_loss": f"{atom_targets_loss.cpu().detach().numpy():.4f}",
                     "atom_types_loss": f"{atom_types_loss.cpu().detach().numpy():.4f}",
@@ -282,29 +271,6 @@ for epoch in range(epoch_nums):
                     "bond_omega_rec@3": f"{train_bond_omega_recall3.avg:.4f}",
                 }
                 print_metrics_table(train_metrics, "TRAIN METRICS")
-#                 print('train_________________')
-                
-#                 print('atom_target_precision:', train_atom_targets_precision.avg)
-#                 print('atom_target_recall:', train_atom_targets_recall.avg)
-#                 print('atom_target_precision3:', train_atom_targets_precision3.avg)
-#                 print('atom_target_recall3:', train_atom_targets_recall3.avg)
-
-#                 print('atom_types_acc:', train_atom_types_acc.avg)
-#                 print('atom_charges_acc:', train_atom_charges_acc.avg)
-#                 print('atom_hs_acc:', train_atom_hs_acc.avg)
-
-#                 print('bond_target_precision:', train_bond_targets_precision.avg)
-#                 print('bond_target_recall:', train_bond_targets_recall.avg)
-#                 print('bond_target_precision3:', train_bond_targets_precision3.avg)
-#                 print('bond_target_recall3:', train_bond_targets_recall3.avg)
-
-#                 print('bond_types_acc:', train_bond_types_acc.avg)
-#                 print('bond_rhos_mae:', train_bond_rhos_mae.avg)
-
-#                 print('bond_omega_precision:', train_bond_omega_precision.avg)
-#                 print('bond_omega_recall:', train_bond_omega_recall.avg)
-#                 print('bond_omega_precision3:', train_bond_omega_precision3.avg)
-#                 print('bond_omega_recall3:', train_bond_omega_recall3.avg)
 
                 train_atom_targets_precision.reset()
                 train_atom_targets_recall.reset()
@@ -457,7 +423,7 @@ for epoch in range(epoch_nums):
                          dim=1).permute(0, 2, 3, 1).reshape(-1, 128 * 128, 62)
                     temp3 = (torch.nn.functional.max_pool1d(temp3.float(), stride=1, kernel_size=3, padding=0).reshape(-1, 128, 128,
                     60).permute(0, 3, 1,2)).float()
-                    
+
                     test_bond_omega_precision3.update((((temp3) * temp).sum()/(temp).sum()).cpu().detach().numpy(),
                                           temp.sum().cpu().detach().numpy())
 
@@ -481,32 +447,10 @@ for epoch in range(epoch_nums):
                     "bond_omega_rec@3": f"{test_bond_omega_recall3.avg:.4f}",
                 }
                 print_metrics_table(test_metrics, "TEST METRICS")
-#                 print('test_________________')
 
-#                 print('atom_target_precision:', test_atom_targets_precision.avg)
-#                 print('atom_target_recall:', test_atom_targets_recall.avg)
-#                 print('atom_target_precision3:', test_atom_targets_precision3.avg)
-#                 print('atom_target_recall3:', test_atom_targets_recall3.avg)
-
-#                 print('atom_types_acc:', test_atom_types_acc.avg)
-#                 print('atom_charges_acc:', test_atom_charges_acc.avg)
-#                 print('atom_hs_acc:', test_atom_hs_acc.avg)
-
-#                 print('bond_target_precision:', test_bond_targets_precision.avg)
-#                 print('bond_target_recall:', test_bond_targets_recall.avg)
-#                 print('bond_target_precision3:', test_bond_targets_precision3.avg)
-#                 print('bond_target_recall3:', test_bond_targets_recall3.avg)
-
-#                 print('bond_types_acc:', test_bond_types_acc.avg)
-#                 print('bond_rhos_mae:', test_bond_rhos_mae.avg)
-
-#                 print('bond_omega_precision:', test_bond_omega_precision.avg)
-#                 print('bond_omega_recall:', test_bond_omega_recall.avg)
-#                 print('bond_omega_precision3:', test_bond_omega_precision3.avg)
-#                 print('bond_omega_recall3:', test_bond_omega_recall3.avg)
     epoch_time = time.time() - epoch_start
     print(f"\n=== Эпоха {epoch} завершена за {epoch_time:.1f} сек ({epoch_time/60:.1f} мин) ===\n")
-    torch.save(model.state_dict(),'weights/unet_model_weights{}.pkl'.format(epoch))
+    torch.save(model.state_dict(),f'weights/unet_model_weights{epoch}.pkl')
 
 
 

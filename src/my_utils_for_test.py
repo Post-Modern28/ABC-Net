@@ -1,15 +1,10 @@
 import numpy as np
 import torch
-from generate_smiles import sdf2smiles
 from rdkit import Chem
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import torch
-import pandas as pd
-from PIL import Image
-import numpy as np
+
+from generate_smiles import sdf2smiles
 from utils import atom_vocab
+
 
 def canonical(smiles):
     mol = Chem.MolFromSmiles(smiles)
@@ -72,14 +67,14 @@ def match_bonds_to_atoms(atoms, bonds):
 
     return edges
 
-  
+
 
 atom_type_devocab = {v: k for k, v in atom_vocab.items()}
 
 def predict_smiles(atoms, edges):
     atom_types = [a[2] for a in atoms]
     atom_labels = [atom_type_devocab.get(t, 'C') for t in atom_types]
-    
+
     try:
         smiles = sdf2smiles(
             atom_labels,
@@ -91,16 +86,13 @@ def predict_smiles(atoms, edges):
         )
     except:
         return None
-    
+
     return smiles
 
 
 
-import torch
-import numpy as np
-import pandas as pd
-from PIL import Image
 import cv2
+
 
 class MolecularDataset(torch.utils.data.Dataset):
     def __init__(self, df, mode="train", amount=0.0):

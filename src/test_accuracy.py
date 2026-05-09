@@ -1,21 +1,13 @@
-from utils import MolecularImageDataset, collate_fn
-from torch.utils.data import DataLoader
+
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import pandas as pd
-import numpy as np
-from unet import UNet
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import mpl_toolkits.mplot3d
+from torch.utils.data import DataLoader
 
-from generate_smiles import sdf2smiles
-from copy import deepcopy
-from utils import atom_vocab, charge_vocab
-import rdkit
-from rdkit import Chem
 from meter import AverageMeter
+from unet import UNet
+from utils import MolecularImageDataset, atom_vocab, charge_vocab, collate_fn
 
 
 def leaky_relu(x):

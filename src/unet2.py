@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 class ChannelAttentionModule(nn.Module):
     def __init__(self, channel, reduction=16):
-        super(ChannelAttentionModule, self).__init__()
+        super().__init__()
         mid_channel = channel // reduction
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
@@ -23,7 +23,7 @@ class ChannelAttentionModule(nn.Module):
 
 class SpatialAttentionModule(nn.Module):
     def __init__(self):
-        super(SpatialAttentionModule, self).__init__()
+        super().__init__()
         self.conv2d = nn.Conv2d(in_channels=2, out_channels=1, kernel_size=7, stride=1, padding=3)
         self.sigmoid = nn.Sigmoid()
 
@@ -36,7 +36,7 @@ class SpatialAttentionModule(nn.Module):
 
 class CBAM(nn.Module):
     def __init__(self, channel):
-        super(CBAM, self).__init__()
+        super().__init__()
         self.channel_attention = ChannelAttentionModule(channel)
         self.spatial_attention = SpatialAttentionModule()
 
@@ -115,7 +115,7 @@ class Up(nn.Module):
 
 class OutConv(nn.Module):
     def __init__(self, in_channels, out_channels):
-        super(OutConv, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1)
         self.bn = nn.BatchNorm2d(in_channels)
         self.activation = nn.LeakyReLU(inplace=True)
@@ -128,7 +128,7 @@ class OutConv(nn.Module):
 
 class UNet(nn.Module):
     def __init__(self, in_channels, heads=[1, 21, 5, 1, 4, 2]):
-        super(UNet, self).__init__()
+        super().__init__()
         self.n_channels = in_channels
         self.heads = heads
         self.s = torch.nn.Parameter(torch.randn(10)/100)
@@ -174,7 +174,6 @@ class UNet(nn.Module):
 
 
 if __name__ == '__main__':
-    import sys
 
     net = UNet(in_channels=3)
     x = torch.rand(1, 3, 480, 480)

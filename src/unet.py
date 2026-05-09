@@ -62,7 +62,7 @@ class Up(nn.Module):
 
 class OutConv(nn.Module):
     def __init__(self, in_channels, out_channels):
-        super(OutConv, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1)
         self.bn = nn.BatchNorm2d(in_channels)
         self.activation = nn.LeakyReLU(inplace=True)
@@ -76,7 +76,7 @@ class OutConv(nn.Module):
 
 class UNet(nn.Module):
     def __init__(self, in_channels, heads=[1, 21, 5, 1, 4, 2]):
-        super(UNet, self).__init__()
+        super().__init__()
         self.n_channels = in_channels
         self.heads = heads
         self.s = torch.nn.Parameter(torch.randn(10)/100)
@@ -120,7 +120,6 @@ class UNet(nn.Module):
 
 
 if __name__ == '__main__':
-    import sys
 
     # sys.path.extend('/home/user/.local/lib/python3.7/site-packages')
     # import inplace_abn

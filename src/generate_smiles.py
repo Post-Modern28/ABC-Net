@@ -1,8 +1,6 @@
-import rdkit
-from rdkit import Chem
-
-from indigo import IndigoObject, Indigo
+from indigo import Indigo
 from indigo.inchi import IndigoInchi
+from rdkit import Chem
 
 indigo = Indigo()
 indigo_inchi = IndigoInchi(indigo)
@@ -23,27 +21,25 @@ def sdf2smiles(atom_list,bond_list,atom_charge_list,bond_type_list,atoms_positio
     atom_num = ' ' * (3 - len(atom_num)) + atom_num
     bond_num = ' ' * (3 - len(bond_num)) + bond_num
 
-    text += '{}{}  0  0  0  0  0  0  0  0999 V2000\n'.format(atom_num,bond_num)
+    text += f'{atom_num}{bond_num}  0  0  0  0  0  0  0  0999 V2000\n'
 
     for i,atom in enumerate(atom_list):
         atom = atom + ' ' * (4-len(atom))
         if atoms_position_list is None:
-            text += '    0.0000    0.0000    0.0000 {}0  0  0  0  0  0  0  0  0  0  0  0\n'.format(atom)
+            text += f'    0.0000    0.0000    0.0000 {atom}0  0  0  0  0  0  0  0  0  0  0  0\n'
         else:
             atoms_position_list[i][0] = atoms_position_list[i][0]/60-1
             atoms_position_list[i][1] = atoms_position_list[i][1] / 60 - 1
             if atoms_position_list[i][0]<0:
                 if atoms_position_list[i][1]<0:
-                    text += '   {:2.4f}   {:2.4f}    0.0000 {}0  0  0  0  0  0  0  0  0  0  0  0\n'.format(atoms_position_list[i][0],atoms_position_list[i][1],atom)
+                    text += f'   {atoms_position_list[i][0]:2.4f}   {atoms_position_list[i][1]:2.4f}    0.0000 {atom}0  0  0  0  0  0  0  0  0  0  0  0\n'
                 else:
-                    text += '   {:2.4f}    {:.4f}    0.0000 {}0  0  0  0  0  0  0  0  0  0  0  0\n'.format(
-                        atoms_position_list[i][0], atoms_position_list[i][1], atom)
+                    text += f'   {atoms_position_list[i][0]:2.4f}    {atoms_position_list[i][1]:.4f}    0.0000 {atom}0  0  0  0  0  0  0  0  0  0  0  0\n'
             else:
                 if atoms_position_list[i][1]<0:
-                    text += '    {:.4f}   {:2.4f}    0.0000 {}0  0  0  0  0  0  0  0  0  0  0  0\n'.format(atoms_position_list[i][0],atoms_position_list[i][1],atom)
+                    text += f'    {atoms_position_list[i][0]:.4f}   {atoms_position_list[i][1]:2.4f}    0.0000 {atom}0  0  0  0  0  0  0  0  0  0  0  0\n'
                 else:
-                    text += '    {:.4f}    {:.4f}    0.0000 {}0  0  0  0  0  0  0  0  0  0  0  0\n'.format(
-                        atoms_position_list[i][0], atoms_position_list[i][1], atom)
+                    text += f'    {atoms_position_list[i][0]:.4f}    {atoms_position_list[i][1]:.4f}    0.0000 {atom}0  0  0  0  0  0  0  0  0  0  0  0\n'
 
     for i, bond in enumerate(bond_list):
         begin,end = int(bond[0]),int(bond[1])
@@ -71,7 +67,7 @@ def sdf2smiles(atom_list,bond_list,atom_charge_list,bond_type_list,atoms_positio
         bond_stereo = ' ' * (3 - len(bond_stereo)) + bond_stereo
 
 
-        text += '{}{}{}{}\n'.format(begin,end,bond_type,bond_stereo)
+        text += f'{begin}{end}{bond_type}{bond_stereo}\n'
 
     total_charge_num = 0
     charge_line = ''
@@ -90,16 +86,16 @@ def sdf2smiles(atom_list,bond_list,atom_charge_list,bond_type_list,atoms_positio
 
     charge_line = 'M  CHG' +total_charge_num+ charge_line + '\n'
     text += charge_line
-    
+
     if len(atom_hs_list)>0:
-        text+= 'M  STY  {}'.format(len(atom_hs_list)) + ''.join(['   {} DAT'.format(k+1)   for  k in range(len(atom_hs_list))]) + '\n'
-        text+= 'M  SLB  {}'.format(len(atom_hs_list)) + ''.join(['   {}   {}'.format(k+1,k+1)   for  k in range(len(atom_hs_list))]) + '\n'
+        text+= f'M  STY  {len(atom_hs_list)}' + ''.join([f'   {k+1} DAT'   for  k in range(len(atom_hs_list))]) + '\n'
+        text+= f'M  SLB  {len(atom_hs_list)}' + ''.join([f'   {k+1}   {k+1}'   for  k in range(len(atom_hs_list))]) + '\n'
 
         for k in range(len(atom_hs_list)):
-            text+='M  SAL   {}  1  {}  \n'.format(k+1,atom_hs_list[k])
-            text+='M  SDT   {} MRV_IMPLICIT_H    \n'.format(k+1)
-            text+='M  SDD   {}     0.0000    0.0000    DA    ALL  1       1    \n'.format(k+1)
-            text+='M  SED   {} IMPL_H1\n'.format(k+1)
+            text+=f'M  SAL   {k+1}  1  {atom_hs_list[k]}  \n'
+            text+=f'M  SDT   {k+1} MRV_IMPLICIT_H    \n'
+            text+=f'M  SDD   {k+1}     0.0000    0.0000    DA    ALL  1       1    \n'
+            text+=f'M  SED   {k+1} IMPL_H1\n'
 
 
     text += 'M  END\n$$$$'
@@ -109,9 +105,9 @@ def sdf2smiles(atom_list,bond_list,atom_charge_list,bond_type_list,atoms_positio
     #    f.write(text)
     #    f.close()
 
-    #mols = [mol for mol in Chem.SDMolSupplier('temp.sdf')]    
+    #mols = [mol for mol in Chem.SDMolSupplier('temp.sdf')]
     #print(text)
-    
+
     mol = Chem.MolFromMolBlock(text)
     if mol is None:
         return None

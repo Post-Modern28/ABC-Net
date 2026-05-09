@@ -1,10 +1,8 @@
-import torch
-from torch.utils.data import Dataset
 import cv2
 import numpy as np
+import torch
 from cv2 import resize
-import skimage.morphology as sm
-from skimage.transform import rotate
+from torch.utils.data import Dataset
 
 # {'C': 6136637, 'N': 915240, 'O': 937100, 'P': 19613, 'F': 124551,
 # 'Cl': 74160, 'S': 104677, 'Br': 57488, 'B': 2969, 'Se': 1633, 'I': 10490, 'H': 1394, 'Si': 1795}
@@ -27,7 +25,7 @@ stereo_vocab = {0 : 0, 1 : 1, 6 : 2}
 
 class MolecularImageDataset(Dataset):
     def __init__(self, df, transform=None, amount=0.1):
-        super(MolecularImageDataset, self).__init__()
+        super().__init__()
         self.df = df
         self.transform = transform
         self.amount = amount
@@ -67,7 +65,7 @@ class MolecularImageDataset(Dataset):
 
         temp_img = ((temp_img2/255)<0.6)*1
 
-        #if np.random.rand()<0.1: 
+        #if np.random.rand()<0.1:
         #    aaa = np.random.rand()
         #    if aaa<0.5:
         #        temp_img = sm.thin(temp_img,max_iter=np.random.randint(0,2))
@@ -101,7 +99,7 @@ class MolecularImageDataset(Dataset):
             if len(atom)==1:
                 atom = atom.upper()
             idx = atom_vocab.get(atom,0)
-            
+
             if len(position.split(','))==4:
                 x, y, charge,hs = position.split(',')
                 x, y, charge = int(int(x)*scale_x+ddx)//4, int(int(y)*scale_y+ddy)//4, int(charge)
@@ -179,7 +177,7 @@ class MolecularImageDataset(Dataset):
                     omega_idx_begin = 0
 
                 bond_rho[omega_idx_begin:(omega_idx+2),x_begin:(x+2),y_begin:(y+2)] = rho
-                
+
                 bond_omega_type[omega_idx_begin:(omega_idx+2),x_begin:(x+2),y_begin:(y+2)] = 0.8
                 bond_omega_type[omega_idx,x,y] = 1
 
@@ -197,18 +195,18 @@ class MolecularImageDataset(Dataset):
                     bond_type[type_idx, 0, x_begin:(x+2),y_begin:(y+2)] = 0.5
 
             else:
-                
+
                 omega_idx_begin = omega_idx-1
                 if omega_idx==0:
                     omega_idx_begin = 0
 
-                bond_rho[omega_idx_begin:(omega_idx+2),x_begin:(x+2),y_begin:(y+2)] = rho 
+                bond_rho[omega_idx_begin:(omega_idx+2),x_begin:(x+2),y_begin:(y+2)] = rho
 
                 bond_omega_type[omega_idx_begin:(omega_idx+2),x_begin:(x+2),y_begin:(y+2)] = 0.8
                 bond_omega_type[omega_idx,x,y] = 1
 
                 bond_type[type_idx,omega_idx_begin:(omega_idx+2),x_begin:(x+2),y_begin:(y+2)] = 0.5
-                bond_type[type_idx,omega_idx, x,y] = 1 
+                bond_type[type_idx,omega_idx, x,y] = 1
 
                 if omega_idx == 0:
                     bond_rho[-1, x_begin:(x + 2), y_begin:(y + 2)] = rho
@@ -250,7 +248,7 @@ class MolecularImageDataset(Dataset):
         # filter_center = gaussian2D([7,7],7/6)
         # atom_target[0] = cv2.filter2D(atom_target[0],-1,filter_center)
         # bond_target[0] = cv2.filter2D(bond_target[0],-1,filter_center)
-        
+
         # atom_target[atom_target>1] = 1
         # bond_target[bond_target>1] = 1
         return img,atom_target,atom_type,atom_charge,atom_hs,bond_target,bond_type,bond_rho,bond_omega_type

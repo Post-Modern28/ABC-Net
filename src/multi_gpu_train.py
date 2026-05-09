@@ -1,16 +1,15 @@
-from utils import MolecularImageDataset,collate_fn
-from torch.utils.data import  DataLoader
-import torch
-import torch.nn as nn
-import torch.optim as optim
+import argparse
+
 import pandas as pd
-import numpy as np
-from unet import UNet
+import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
-import argparse
-import matplotlib.pyplot as plt
-import os
+import torch.optim as optim
+from torch.utils.data import DataLoader
+
+from unet import UNet
+from utils import MolecularImageDataset, collate_fn
+
 #os.environ["CUDA_VISIBLE_DEVICES"] = "4,5,6,7"
 
 parser = argparse.ArgumentParser(description='multi-gpu-training')
@@ -162,7 +161,7 @@ def main_worker(local_rank,nprocs,args):
                     print('bond_rhos_mae:', bond_rhos_mae)
 
                     temp = torch.sum(bond_rhos) / torch.sum((bond_rhos >= 1) * 1)
-                    bond_rhos_max = ((torch.max(torch.abs(bond_rhos-bond_rhos_pred)* torch.sum(bond_types,dim=1))/ temp) ).cpu().detach().numpy()
+                    bond_rhos_max = (torch.max(torch.abs(bond_rhos-bond_rhos_pred)* torch.sum(bond_types,dim=1))/ temp ).cpu().detach().numpy()
                     print('bond_rhos_max_error:', bond_rhos_max)
 
                     bond_omega_acc = (torch.sum(torch.sum(torch.sum(bond_types==1,dim=1),dim=1) * (torch.abs(bond_omega_types.argmax(dim=1)-bond_omega_types_pred.argmax(dim=1))<4) )/torch.sum(torch.sum(bond_types==1))).cpu().detach().numpy()
@@ -255,8 +254,8 @@ def main_worker(local_rank,nprocs,args):
                         test_bond_rhos_mae += bond_rhos_mae
 
                         temp = torch.sum(bond_rhos) / torch.sum((bond_rhos >= 1) * 1)
-                        bond_rhos_max = ((torch.max(torch.abs(bond_rhos - bond_rhos_pred) * torch.sum(bond_types,
-                                                                                                      dim=1)) / temp))
+                        bond_rhos_max = (torch.max(torch.abs(bond_rhos - bond_rhos_pred) * torch.sum(bond_types,
+                                                                                                      dim=1)) / temp)
                         test_bond_rhos_max_error  += bond_rhos_max
 
                         bond_omega_acc = (torch.sum(torch.sum(torch.sum(bond_types==1,dim=1),dim=1) * (torch.abs(
@@ -322,7 +321,7 @@ if __name__ == '__main__':
     import time
     start=time.time()
     main()
-    print('run time:{}'.format(time.time()-start))
+    print(f'run time:{time.time()-start}')
 
 
 

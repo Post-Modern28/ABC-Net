@@ -1,39 +1,24 @@
 """
-Refactored version of img2smiles_clean.py using postprocessing2.py functions.
+Refactored version of img2smiles.py using postprocessing2.py functions.
 Cleaner code organization with modular functions.
 """
 
-from utils import MolecularImageDataset, collate_fn
-from torch.utils.data import DataLoader
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import pandas as pd
-import numpy as np
-from unet import UNet
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import mpl_toolkits.mplot3d
 import os
 
+import matplotlib.pyplot as plt
+import pandas as pd
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+
+from unet import UNet
+from utils import MolecularImageDataset, collate_fn
+
 plt.switch_backend('agg')
-from generate_smiles import sdf2smiles
-from copy import deepcopy
-from utils import atom_vocab, charge_vocab
-import rdkit
 from rdkit import Chem
 
-from postprocessing2 import (
-    extract_atoms,
-    extract_bonds,
-    match_bonds_to_atoms,
-    apply_valence_correction,
-    filter_atoms,
-    remap_bonds,
-    find_implicit_hydrogens,
-    predict_smiles_full
-)
 from plotting_utils import plot_inference_results
+from postprocessing2 import predict_smiles_full
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -58,12 +43,10 @@ RESULTS_DIR = f'results/{DATASET_NAME}'
 # =======================
 # DATA
 # =======================
-# df = pd.read_csv(CSV_PATH).copy().reset_index(drop=True)
+
 
 df = pd.read_csv(CSV_PATH).copy().reset_index(drop=True)[:30]
 
-# df = pd.read_csv('../data2/UOB/uob.csv')
-# df = pd.read_csv('../data2/USPTO/uspto.csv')[:100]
 df['atoms_string'] = ''
 df['bonds_string'] = ''
 
@@ -92,63 +75,63 @@ results = []
 with torch.no_grad():
     for batch_num, (imgs, atom_targets, atom_types, atom_charges, atom_hs,
                     bond_targets, bond_types, bond_rhos, bond_omega_types) in enumerate(dataloader):
-        
+
         imgs = imgs.to(device)
         atom_targets_pred, atom_types_pred, atom_charges_pred, atom_hs_pred, bond_targets_pred, \
         bond_types_pred, bond_rhos_pred, bond_omega_types_pred = model(
             imgs)
-        
+
         # ===== PEAK DETECTION =====
         temp = torch.nn.functional.max_pool2d(atom_targets_pred, kernel_size=3,
                                               stride=1, padding=1)
         atom_targets_pred = (temp == atom_targets_pred) * (atom_targets_pred > -1).float()
-        
+
         temp = torch.nn.functional.max_pool2d(bond_targets_pred, kernel_size=3,
                                               stride=1, padding=1)
         bond_targets_pred = (temp == bond_targets_pred) * (bond_targets_pred > -1).float()
-        
+
         bond_rhos_pred = torch.abs(bond_rhos_pred)
-        
+
         bond_types_pred = bond_types_pred.view(-1, 6, 60, 128, 128)
-        
+
         # ===== BOND OMEGA PREPROCESSING (NMS) =====
         bond_omega_types_pred2 = torch.cat(
             [bond_omega_types_pred[:, 59:], bond_omega_types_pred, bond_omega_types_pred[:, :1]], dim=1
         ).permute(0, 2, 3, 1).reshape(-1, 128 * 128, 62)
-        
+
         bond_omega_types_pred2 = ((torch.nn.functional.max_pool1d(bond_omega_types_pred2, stride=1, kernel_size=3,
                 padding=0).reshape(-1, 128, 128, 60).permute(0, 3, 1, 2) == bond_omega_types_pred) * \
                 (bond_omega_types_pred > -1)).float()
-        
+
         # ===== PROCESS EACH SAMPLE =====
         for j in range(atom_targets_pred.shape[0]):
             smiles = df.loc[total_nums, 'Smiles']
             mol = Chem.MolFromSmiles(smiles)
             smiles = Chem.MolToSmiles(mol, canonical=True)
-            
+
             total_nums += 1
             if total_nums % 100 == 0:
                 print(f"Processed: {total_nums}")
-            
+
             # ===== EXTRACT PREDICTIONS =====
             img = imgs[j].detach().cpu().numpy()
             atom_target_img = atom_targets_pred[j, 0]
             atom_type_img = atom_types_pred[j].argmax(0)
             atom_charge_img = atom_charges_pred[j].argmax(0)
             atom_hs_img = atom_hs_pred[j].argmax(0)
-            
+
             bond_target_img = bond_targets_pred[j, 0]
             bond_type_img = bond_types_pred[j].argmax(0)
             bond_rhos_img = bond_rhos_pred[j]
             bond_omega_img = bond_omega_types_pred[j]
             bond_omega_img2 = bond_omega_types_pred2[j]
-            
+
             # ===== CHECK FOR EMPTY PREDICTIONS =====
             if (atom_target_img.sum()) == 0 or (bond_target_img.sum() == 0):
                 print(f"Sample {total_nums}: No atoms/bonds detected")
                 results.append(None)
                 continue
-            
+
             # ===== FULL POSTPROCESSING PIPELINE =====
             if PLOT_IMAGES:
                 pred_smiles, intermediates = predict_smiles_full(
@@ -162,7 +145,7 @@ with torch.no_grad():
                     bond_omega_img2,
                     return_intermediates=True
                 )
-                
+
                 # Plot results if intermediates are available
                 if intermediates is not None:
                     plot_inference_results(
@@ -188,7 +171,7 @@ with torch.no_grad():
                     bond_rhos_img,
                     bond_omega_img2
                 )
-            
+
             results.append(pred_smiles)
 
 # =======================

@@ -1,17 +1,15 @@
-from utils import MolecularImageDataset, collate_fn
-from torch.utils.data import DataLoader
-import torch
-import torch.nn as nn
-import torch.optim as optim
+import argparse
+
 import pandas as pd
-import numpy as np
-from unet import UNet
-import matplotlib.pyplot as plt
-import os
-from meter import AverageMeter
+import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
-import argparse
+import torch.optim as optim
+from torch.utils.data import DataLoader
+
+from meter import AverageMeter
+from unet import UNet
+from utils import MolecularImageDataset, collate_fn
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 parser = argparse.ArgumentParser(description='multi-gpu-training')
@@ -93,7 +91,7 @@ def main_worker(local_rank,nprocs,args):
 
     dist.barrier()
 
-    model.load_state_dict(torch.load('temp.pth',map_location={'cuda:0':'cuda:{}'.format(local_rank)}))
+    model.load_state_dict(torch.load('temp.pth',map_location={'cuda:0':f'cuda:{local_rank}'}))
 
 
     optimizer = optim.Adam(model.parameters(), lr=2.5e-4, weight_decay=1e-8)
@@ -546,14 +544,14 @@ def main_worker(local_rank,nprocs,args):
                         print('bond_omega_recall3:', test_bond_omega_recall3.avg)
 
         if local_rank==0:
-            torch.save(model.state_dict(), 'weights2_{}/unet_model_weights{}.pkl'.format(amount, epoch))
+            torch.save(model.state_dict(), f'weights2_{amount}/unet_model_weights{epoch}.pkl')
 
 
 if __name__ == '__main__':
     import time
     start=time.time()
     main()
-    print('run time:{}'.format(time.time()-start))
+    print(f'run time:{time.time()-start}')
 
 
 

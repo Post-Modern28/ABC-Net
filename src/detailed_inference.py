@@ -1,24 +1,22 @@
+import os
+from copy import deepcopy
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import torch
-from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
-import pandas as pd
-import numpy as np
-from unet import UNet
-import matplotlib.pyplot as plt
-from copy import deepcopy
-from utils import atom_vocab, charge_vocab
-import rdkit
-from rdkit import Chem
-import os
-import cv2
+from torch.utils.data import DataLoader
 
-from utils import MolecularImageDataset
+from unet import UNet
+from utils import MolecularImageDataset, atom_vocab, charge_vocab
 
 # --------------------- Настройки ---------------------
 os.makedirs('results', exist_ok=True)
 plt.switch_backend('agg')
 from generate_smiles import sdf2smiles
+
 
 def leaky_relu(x):
     return np.maximum(x, 0.5 * x)
@@ -38,7 +36,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class InferenceDataset(MolecularImageDataset):
     def __init__(self, df):
         super().__init__(df, amount=0.0)  # убираем noise
-        
+
 def inference_collate_fn(batch):
     """Простая collate функция для инференса"""
     imgs = np.concatenate([np.expand_dims(img, 0) for img in batch], axis=0)
@@ -115,7 +113,7 @@ with torch.no_grad():
             atom_type_img = atom_types_pred[j].argmax(0).cpu()
             atom_charge_img = atom_charges_pred[j].argmax(0).cpu()
             atom_hs_img = atom_hs_pred[j].argmax(0).cpu()
-            
+
             bond_target_img = bond_targets_pred[j, 0].cpu()
             bond_type_img = bond_types_pred[j].argmax(0).cpu()
             bond_rhos_img = bond_rhos_pred[j].cpu()
@@ -140,13 +138,13 @@ with torch.no_grad():
                     bonds_position_list = []
                     bonds_property_list = []
                     bonds_delta_list = []
-                    
+
                     for pos in bond_target_img.nonzero(as_tuple=False):
                         x, y = pos[0].item(), pos[1].item()
-                        
+
                         for omega_idx in bond_omega_img[:, x, y].nonzero(as_tuple=False):
                             omega_idx = omega_idx[0].item()
-                            
+
                             if omega_idx <= 28:
                                 if bond_omega_img[omega_idx, x, y] < bond_omega_img[(omega_idx+29):(omega_idx+31), x, y].max():
                                     continue
@@ -164,11 +162,11 @@ with torch.no_grad():
 
                             omega = omega_idx * (np.pi / 30) + np.pi / 60 - np.pi / 2
                             rho = bond_rhos_img[omega_idx, x, y].item()
-                            
+
                             delta_x = rho * np.cos(omega)
                             delta_y = rho * np.sin(omega)
                             bond_type = bond_type_img[omega_idx, x, y].item()
-                            
+
                             bonds_position_list.append([x, y])
                             bonds_property_list.append(bond_type)
                             bonds_delta_list.append([delta_x, delta_y])
@@ -177,19 +175,19 @@ with torch.no_grad():
                     atoms_type_list = []
                     atoms_charge_list = []
                     atoms_hs_list = []
-                    
+
                     for pos in atom_target_img.nonzero(as_tuple=False):
                         x, y = pos[0].item(), pos[1].item()
                         atom_type = atom_type_img[x, y].item()
                         atom_charge = atom_charge_img[x, y].item()
                         atom_h = atom_hs_img[x, y].item()
-                        
+
                         if len(atoms_position_list) > 0:
                             temp1 = np.array(atoms_position_list)
                             temp2 = np.array([[x, y]])
                             if np.sum(np.square(temp1 - temp2), axis=-1).min() < 4:
                                 continue
-                        
+
                         atoms_position_list.append([x, y])
                         atoms_type_list.append(atom_type_devocab.get(atom_type, 'C'))
                         atoms_charge_list.append(atom_charge_devocab.get(atom_charge, 0))
@@ -201,36 +199,36 @@ with torch.no_grad():
                         atom_pred_pos1 = np.expand_dims(np.array(bonds_position_list) + np.array(bonds_delta_list), 1)
                         atom_pred_pos2 = np.expand_dims(np.array(bonds_position_list) - np.array(bonds_delta_list), 1)
                         atoms_pos = np.expand_dims(np.array(atoms_position_list), 0)
-                        
+
                         e1 = np.array(bonds_delta_list) / (np.sqrt((np.array(bonds_delta_list) ** 2).sum(-1, keepdims=True)) + 1e-6)
                         e2 = np.flip(e1.copy(), 1)
                         e2[:, 0] = -e2[:, 0]
                         e1 = np.expand_dims(e1, 1)
                         e2 = np.expand_dims(e2, 1)
-                        
+
                         dist1 = np.abs(leaky_relu(((atom_pred_pos1 - atoms_pos) * e1).sum(-1))) + \
                                 np.abs((2 * (atom_pred_pos1 - atoms_pos) * e2).sum(-1))
                         dist2 = np.abs(leaky_relu(-((atom_pred_pos2 - atoms_pos) * e1).sum(-1))) + \
                                 np.abs((2 * (atom_pred_pos2 - atoms_pos) * e2).sum(-1))
-                        
+
                         atom_idx1 = dist2.argmin(-1)
                         atom_idx2 = dist1.argmin(-1)
-                        
+
                         bond2atom = []
                         bonds_prop_final = []
-                        
+
                         for i in range(len(bonds_position_list)):
                             idx1 = atom_idx1[i]
                             idx2 = atom_idx2[i]
-                            
+
                             if idx1 == idx2:
                                 continue
                             if [idx1, idx2] in bond2atom or [idx2, idx1] in bond2atom:
                                 continue
-                            
+
                             bond2atom.append([idx1, idx2])
                             bonds_prop_final.append(bond_type_devocab.get(bonds_property_list[i], 1))
-                        
+
                         if len(bond2atom) == 0:
                             stats['status'] = 'NO_VALID_BONDS'
                         else:
@@ -241,7 +239,7 @@ with torch.no_grad():
                                     bond_nums = 1
                                 atom_counts[x] += bond_nums
                                 atom_counts[y] += bond_nums
-                            
+
                             for serial, atom_count in enumerate(atom_counts):
                                 atom_type = atoms_type_list[serial]
                                 if atom_max_valence.get(atom_type, 4) < atom_count:
@@ -251,19 +249,19 @@ with torch.no_grad():
                                     elif atom_count == 5: atoms_type_list[serial] = 'P'
                                     elif atom_count == 6: atoms_type_list[serial] = 'S'
                                     elif atom_count == 7: atoms_type_list[serial] = 'Cl'
-                            
+
                             atom_showed = []
                             for idx_pair in bond2atom:
                                 atom_showed.extend(idx_pair)
-                            
+
                             atom_mask = [i in atom_showed for i in range(len(atoms_position_list))]
-                            
+
                             corr_idx = []
                             atoms_type_final = []
                             atoms_charge_final = []
                             atoms_pos_final = []
                             atoms_hs_final = []
-                            
+
                             k = 1
                             for i in range(len(atoms_position_list)):
                                 if atom_mask[i]:
@@ -275,11 +273,11 @@ with torch.no_grad():
                                     k += 1
                                 else:
                                     corr_idx.append(k)
-                            
+
                             bond2atom_final = []
                             for x, y in bond2atom:
                                 bond2atom_final.append([corr_idx[x], corr_idx[y]])
-                            
+
                             atom_implicit_hs = []
                             for temp_idx, (x, y) in enumerate(bond2atom_final):
                                 bond_nums = bonds_prop_final[temp_idx]
@@ -290,21 +288,21 @@ with torch.no_grad():
                                     if atoms_type_final[y - 1] != 'C' and atoms_hs_final[y - 1] != 0:
                                         if y not in atom_implicit_hs:
                                             atom_implicit_hs.append(y)
-                            
+
                             smiles_pred = sdf2smiles(
                                 atoms_type_final, bond2atom_final, atoms_charge_final,
                                 bonds_prop_final, deepcopy(atoms_pos_final), atom_implicit_hs
                             )
-                            
+
                             stats['pred_smiles'] = smiles_pred
                             stats['status'] = 'SUCCESS'
-                            
+
                 except Exception as e:
                     stats['status'] = f'ERROR: {str(e)[:50]}'
 
             analysis_data.append(stats)
             total_nums += 1
-            
+
             if total_nums % 10 == 0:
                 print(f"Processed {total_nums} images...")
                 pd.DataFrame(analysis_data).to_csv('results/detailed_analysis.csv', index=False)
@@ -322,7 +320,7 @@ print(analysis_df['status'].value_counts())
 print(f"\nСреднее атомов: {analysis_df['num_atoms_detected'].mean():.1f}")
 print(f"Среднее связей: {analysis_df['num_bonds_detected'].mean():.1f}")
 print(f"Средняя уверенность атомов: {analysis_df['max_atom_conf'].mean():.3f}")
-print(f"Средняя уверенность связей: {analysis_df['max_bond_conf'].mean():.3f}")        
+print(f"Средняя уверенность связей: {analysis_df['max_bond_conf'].mean():.3f}")
         # Успешные предсказания
 success_df = analysis_df[analysis_df['status'] == 'SUCCESS']
 if len(success_df) > 0:
@@ -336,5 +334,5 @@ if len(success_df) > 0:
             print(f"  Pred:  {pred_smiles[:50]}...")
         else:
             print(f"  True:  {true_smiles[:50] if true_smiles else 'N/A'}...")
-            print(f"  Pred:  None")
+            print("  Pred:  None")
         print()
