@@ -7,8 +7,8 @@ from copy import deepcopy
 
 import numpy as np
 
-from generate_smiles import sdf2smiles
-from utils import atom_vocab, charge_vocab
+from .generate_smiles import sdf2smiles
+from ..utils.utils import atom_vocab, charge_vocab
 
 # =======================
 # DEVOCAB

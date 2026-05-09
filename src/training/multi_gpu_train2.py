@@ -7,9 +7,9 @@ import torch.multiprocessing as mp
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from meter import AverageMeter
-from unet import UNet
-from utils import MolecularImageDataset, collate_fn
+from .meter import AverageMeter
+from ..models.unet import UNet
+from ..utils.utils import MolecularImageDataset, collate_fn
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 parser = argparse.ArgumentParser(description='multi-gpu-training')

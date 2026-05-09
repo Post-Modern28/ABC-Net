@@ -5,9 +5,9 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from meter import AverageMeter
-from unet import UNet
-from utils import MolecularImageDataset, atom_vocab, charge_vocab, collate_fn
+from .meter import AverageMeter
+from ..models.unet import UNet
+from ..utils.utils import MolecularImageDataset, atom_vocab, charge_vocab, collate_fn
 
 
 def leaky_relu(x):

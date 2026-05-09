@@ -6,9 +6,9 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from meter import AverageMeter
-from unet import UNet
-from utils import MolecularImageDataset, collate_fn
+from .meter import AverageMeter
+from ..models.unet import UNet
+from ..utils.utils import MolecularImageDataset, collate_fn
 
 
 def print_metrics_table(metrics_dict, title):

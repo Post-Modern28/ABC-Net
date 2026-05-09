@@ -5,16 +5,18 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from unet import UNet
-from utils_for_test import MolecularImageDataset, collate_fn
+from ..models.unet import UNet
+from ..utils.utils_for_test import MolecularImageDataset, collate_fn
 
 plt.switch_backend('agg')
 from copy import deepcopy
 
+import rdkit
+import rdkit.Chem.MolStandardize
 from rdkit import Chem
 
-from generate_smiles import sdf2smiles
-from utils import atom_vocab, charge_vocab
+from .generate_smiles import sdf2smiles
+from ..utils.utils import atom_vocab, charge_vocab
 
 
 def leaky_relu(x):
@@ -26,23 +28,19 @@ atom_type_devocab[0] = 'C'
 atom_charge_devocab = {j: i for i, j in charge_vocab.items()}
 
 bond_type_devocab = {0: 1, 1: 2, 2: 3, 3: 4, 4:5,5:6}
-
+bond_stereo_devocab = {0: 0, 1: 1, 2: 6}
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 atom_max_valence = {'<unkonw>': 4, 'O': 2, 'C': 4, 'N': 3, 'F': 1, 'H': 1, 'S': 6, 'Cl': 1, 'P': 5, 'Br': 1,
                     'B': 3, 'I': 1, 'Si': 4, 'Se': 6, 'Te': 6, 'As': 3, 'Al': 3, 'Zn': 2,
                     'Ca': 2, 'Ag': 1}
 
-df = pd.read_csv('../data2/UOB/uob.csv')
-
-if 'Smiles' in df.columns:
-    df.rename(columns={'Smiles': 'smiles'}, inplace=True)
-elif 'SMILES' in df.columns:
-    df.rename(columns={'SMILES': 'smiles'}, inplace=True)
+df = pd.read_csv('../data/UOB/uob2.csv')
+print(len(df))
 
 dataset = MolecularImageDataset(df)
 
-dataloader = DataLoader(dataset, 64, collate_fn=collate_fn)
+dataloader = DataLoader(dataset, 32, collate_fn=collate_fn)
 
 model = UNet(in_channels=1, heads=[1,14,3,2,1,360,60,60])
 model = nn.DataParallel(model)
@@ -107,7 +105,6 @@ with torch.no_grad():
         #     plt.plot([y - rho* np.sin(omega), y +  rho*np.sin(omega)], [x -  rho*np.cos(omega), x +  rho*np.cos(omega)])
 
         for j in range(atom_targets_pred.shape[0]):
-
             smiles = df.loc[total_nums, 'smiles']
             mol = Chem.MolFromSmiles(smiles)
             smiles = Chem.MolToSmiles(mol, canonical=True)
@@ -128,7 +125,6 @@ with torch.no_grad():
                 bond_omega_img = bond_omega_types_pred[j]
                 bond_omega_img2 = bond_omega_types_pred2[j]
 
-
                 if (atom_target_img.sum()) == 0 or (bond_target_img.sum() == 0):
                     print(j, 'cannot find key target point')
                     results.append(None)
@@ -142,7 +138,7 @@ with torch.no_grad():
                     x, y = x.cpu().item(), y.cpu().item()
 
 
-                    for omega_index in bond_omega_img[:, x, y].nonzero(as_tuple=False):
+                    for omega_index in bond_omega_img2[:, x, y].nonzero(as_tuple=False):
 
                         omega_index = omega_index.cpu().item()
 
@@ -168,6 +164,8 @@ with torch.no_grad():
                         rho = bond_rhos_img[omega_index, x, y].cpu().item()
 
                         delta_x, delta_y = rho * np.cos(omega), rho * np.sin(omega)
+                        bond_type = bond_type_img[omega_index, x, y].cpu().item()
+
                         bond_type = bond_type_img[omega_index, x, y].cpu().item()
 
                         bonds_position_list.append([x, y])
@@ -255,8 +253,9 @@ with torch.no_grad():
                     x, y = atom_index
                     bond_nums = bonds_property_list_final[temp]
 
-                    if bond_nums >= 4 :
+                    if bond_nums == 4 or bond_nums==5 or bond_nums==6:
                         bond_nums = 1
+
                     atom_counts[x] += bond_nums
                     atom_counts[y] += bond_nums
                 for serial, atom_count in enumerate(atom_counts):
@@ -320,7 +319,13 @@ with torch.no_grad():
                                          bonds_property_list_final, deepcopy(atoms_position_list_final),
                                          atom_implicit_hs_list)
 
+
+                smiles = rdkit.Chem.MolStandardize.canonicalize_tautomer_smiles(smiles)
+                if smiles_pred is not None:
+                    smiles_pred = rdkit.Chem.MolStandardize.canonicalize_tautomer_smiles(smiles_pred)
+
                 results.append(smiles_pred)
+                #if smiles!=smiles_pred:
                 if False:
                     plt.subplot(131)
                     plt.imshow(img[0])
@@ -335,7 +340,7 @@ with torch.no_grad():
                     for m, position in enumerate(bonds_position_list_final):
                         x, y = position
                         position = [y, x]
-                        ax.annotate(bonds_property_list_final[m][0], xy=position, fontsize=6)
+                        ax.annotate(bonds_property_list_final[m], xy=position, fontsize=6)
                         x, y = position
                         delta_y, delta_x = bonds_delta_list_final[m]
                         ax.plot([x - delta_x, x + delta_x], [y - delta_y, y + delta_y])
@@ -344,7 +349,7 @@ with torch.no_grad():
             else:
                 results.append(None)
 
-
+df['Smiles'] = df['smiles']
 df['smiles_pred'] = results
-dff = df[['smiles', 'smiles_pred']]
+dff = df[['Smiles', 'smiles_pred']]
 dff.to_csv('results/results.csv')

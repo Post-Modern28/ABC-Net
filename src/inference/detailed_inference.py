@@ -9,13 +9,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from unet import UNet
-from utils import MolecularImageDataset, atom_vocab, charge_vocab
+from ..models.unet import UNet
+from ..utils.utils import MolecularImageDataset, atom_vocab, charge_vocab
 
 # --------------------- Настройки ---------------------
 os.makedirs('results', exist_ok=True)
 plt.switch_backend('agg')
-from generate_smiles import sdf2smiles
+from .generate_smiles import sdf2smiles
 
 
 def leaky_relu(x):

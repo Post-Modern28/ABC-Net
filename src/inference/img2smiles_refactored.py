@@ -11,14 +11,14 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from unet import UNet
-from utils import MolecularImageDataset, collate_fn
+from ..models.unet import UNet
+from ..utils.utils import MolecularImageDataset, collate_fn
 
 plt.switch_backend('agg')
 from rdkit import Chem
 
-from plotting_utils import plot_inference_results
-from postprocessing2 import predict_smiles_full
+from .plotting_utils import plot_inference_results
+from .postprocessing2 import predict_smiles_full
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

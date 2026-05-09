@@ -2,9 +2,9 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 
-from test_accuracy import compute_accuracy
-from unet import UNet
-from utils import MolecularImageDataset, collate_fn
+from .test_accuracy import compute_accuracy
+from ..models.unet import UNet
+from ..utils.utils import MolecularImageDataset, collate_fn
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

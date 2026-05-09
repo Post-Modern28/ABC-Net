@@ -5,16 +5,16 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from unet import UNet
-from utils import MolecularImageDataset, collate_fn
+from ..models.unet import UNet
+from ..utils.utils import MolecularImageDataset, collate_fn
 
 plt.switch_backend('agg')
 from copy import deepcopy
 
 from rdkit import Chem
 
-from generate_smiles import sdf2smiles
-from utils import atom_vocab, charge_vocab
+from .generate_smiles import sdf2smiles
+from ..utils.utils import atom_vocab, charge_vocab
 
 
 def leaky_relu(x):

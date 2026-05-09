@@ -9,10 +9,10 @@ import torch.nn as nn
 from rdkit import Chem
 from torch.utils.data import DataLoader
 
-from generate_smiles import sdf2smiles
-from unet import UNet
-from utils import atom_vocab, charge_vocab
-from utils_for_test import MolecularImageDataset, collate_fn
+from .generate_smiles import sdf2smiles
+from ..models.unet import UNet
+from ..utils.utils import atom_vocab, charge_vocab
+from ..utils.utils_for_test import MolecularImageDataset, collate_fn
 
 plt.switch_backend('agg')
 
