@@ -19,7 +19,7 @@ from rdkit import Chem
 from pathlib import Path
 
 from .plotting_utils import plot_inference_results
-from .postprocessing2 import predict_smiles_full
+from .postprocessing import predict_smiles_full
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -35,7 +35,7 @@ DATASET_NAME = names[0]
 current_file = Path(__file__).resolve()
 project_root = current_file.parent.parent.parent  # inference -> src -> ABC-Net
 weights_dir = current_file.parent.parent / 'weights'  # inference -> src -> weights
-results_dir = current_file.parent.parent / 'results'
+results_dir = current_file.parent.parent / 'results' # inference -> src -> results
 
 CSV_PATH = project_root / 'csv_with_path' / f'{DATASET_NAME}.csv'
 WEIGHTS_PATH = weights_dir / 'unet_model_weights29.pkl'
